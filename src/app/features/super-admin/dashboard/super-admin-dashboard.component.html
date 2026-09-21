@@ -1,0 +1,86 @@
+<div class="dashboard-page">
+  <div class="page-header">
+    <div>
+      <h2>Super Admin Dashboard</h2>
+      <p class="subtitle">Platform-wide overview of grocery stores, branches, and module licenses</p>
+    </div>
+    <div class="actions">
+      <a routerLink="/admin/stores/create" class="btn btn-primary">
+        <span>➕</span> Create New Store
+      </a>
+    </div>
+  </div>
+
+  <!-- Metric Cards Grid -->
+  <div class="metrics-grid">
+    <div class="card metric-card">
+      <div class="metric-top">
+        <span class="metric-label">TOTAL STORES</span>
+        <span class="metric-icon">🏬</span>
+      </div>
+      <div class="metric-value">{{ metrics?.total_stores || 0 }}</div>
+      <div class="metric-desc">Registered SaaS grocery store tenants</div>
+    </div>
+
+    <div class="card metric-card">
+      <div class="metric-top">
+        <span class="metric-label">ACTIVE STORES</span>
+        <span class="metric-icon">🟢</span>
+      </div>
+      <div class="metric-value text-success">{{ metrics?.active_stores || 0 }}</div>
+      <div class="metric-desc">Operational retail businesses</div>
+    </div>
+
+    <div class="card metric-card">
+      <div class="metric-top">
+        <span class="metric-label">INACTIVE STORES</span>
+        <span class="metric-icon">🔴</span>
+      </div>
+      <div class="metric-value text-danger">{{ metrics?.inactive_stores || 0 }}</div>
+      <div class="metric-desc">Suspended or pending setup</div>
+    </div>
+
+    <div class="card metric-card">
+      <div class="metric-top">
+        <span class="metric-label">TOTAL BRANCHES</span>
+        <span class="metric-icon">📍</span>
+      </div>
+      <div class="metric-value text-indigo">{{ metrics?.total_branches || 0 }}</div>
+      <div class="metric-desc">Physical outlets and counter locations</div>
+    </div>
+  </div>
+
+  <!-- Quick Platform Actions -->
+  <div class="platform-sections">
+    <div class="card">
+      <div class="card-header">
+        <h3>Quick Actions</h3>
+      </div>
+      <div class="quick-links-grid">
+        <a routerLink="/admin/stores" class="quick-action-box">
+          <span class="action-icon">🏬</span>
+          <div class="action-meta">
+            <span class="action-title">Manage Stores</span>
+            <span class="action-sub">View list, modify status and configure enabled modules</span>
+          </div>
+        </a>
+
+        <a routerLink="/admin/stores/create" class="quick-action-box">
+          <span class="action-icon">✨</span>
+          <div class="action-meta">
+            <span class="action-title">Provision New Tenant</span>
+            <span class="action-sub">Onboard a grocery store with owner credentials and modules</span>
+          </div>
+        </a>
+
+        <a routerLink="/admin/branches" class="quick-action-box">
+          <span class="action-icon">🏢</span>
+          <div class="action-meta">
+            <span class="action-title">Branch Directory</span>
+            <span class="action-sub">Inspect branches across all grocery tenant businesses</span>
+          </div>
+        </a>
+      </div>
+    </div>
+  </div>
+</div>

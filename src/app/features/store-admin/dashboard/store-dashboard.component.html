@@ -1,0 +1,102 @@
+<div class="store-dashboard">
+  <div class="welcome-banner card">
+    <div class="banner-left">
+      <div class="store-tag">🏬 STORE CONTEXT</div>
+      <h2>{{ authService.currentUser()?.storeName || 'My Grocery Store' }}</h2>
+      <p class="store-meta">
+        Store Code: <span class="code-highlight">{{ authService.currentUser()?.storeCode }}</span>
+        &nbsp;•&nbsp; Logged in as: <strong>{{ authService.currentUser()?.name }}</strong>
+        &nbsp;•&nbsp; Role: <span class="badge badge-role">{{ userRole }}</span>
+      </p>
+    </div>
+
+    <div class="banner-right">
+      <div class="assigned-branches-box">
+        <span class="branch-label">Branch Access Scope</span>
+        <div class="branch-pill-group">
+          <span *ngIf="authService.userBranches().length === 0" class="badge badge-active">All Store Branches (Store Owner)</span>
+          <span *ngFor="let b of authService.userBranches()" class="badge badge-role">📍 {{ b.name }} ({{ b.code }})</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Quick Metrics -->
+  <div class="metrics-row">
+    <div class="card metric-box">
+      <span class="m-icon">🏢</span>
+      <div>
+        <div class="m-val">{{ branchCount }}</div>
+        <div class="m-lbl">Active Branches</div>
+      </div>
+    </div>
+
+    <div class="card metric-box">
+      <span class="m-icon">👥</span>
+      <div>
+        <div class="m-val">{{ userCount }}</div>
+        <div class="m-lbl">Store Staff & Users</div>
+      </div>
+    </div>
+
+    <div class="card metric-box">
+      <span class="m-icon">🛡️</span>
+      <div>
+        <div class="m-val">{{ roleCount }}</div>
+        <div class="m-lbl">Configured Roles</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Store Module License Status Matrix -->
+  <div class="card module-status-card">
+    <div class="card-header">
+      <div>
+        <h3>Store Module Availability (Super Admin Licensed)</h3>
+        <p class="subtitle">Two-level access: Features are only operational if enabled here AND granted to your role</p>
+      </div>
+    </div>
+
+    <div class="modules-status-grid">
+      <div *ngFor="let mod of allCatalogModules"
+           class="mod-pill"
+           [ngClass]="isModuleEnabled(mod.module_code) ? 'mod-enabled' : 'mod-disabled'">
+        <span class="status-symbol">{{ isModuleEnabled(mod.module_code) ? '✓' : '✕' }}</span>
+        <div class="mod-meta">
+          <span class="mod-name">{{ mod.module_name }}</span>
+          <span class="mod-state">{{ isModuleEnabled(mod.module_code) ? 'Enabled' : 'Disabled by Platform' }}</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Navigation Cards -->
+  <div class="nav-cards-grid">
+    <div class="card nav-card" *ngIf="permissionService.hasPermission('BRANCH_VIEW')">
+      <div class="nav-card-head">
+        <span class="n-icon">🏢</span>
+        <h4>Branch Management</h4>
+      </div>
+      <p class="n-desc">Set up and manage physical store outlets, market counters, and branch codes.</p>
+      <a routerLink="/store/branches" class="btn btn-secondary btn-sm">Manage Branches →</a>
+    </div>
+
+    <div class="card nav-card" *ngIf="permissionService.hasPermission('USER_VIEW')">
+      <div class="nav-card-head">
+        <span class="n-icon">👥</span>
+        <h4>Staff & User Management</h4>
+      </div>
+      <p class="n-desc">Create cashier and staff accounts, assigning them specific roles and branch locations.</p>
+      <a routerLink="/store/users" class="btn btn-secondary btn-sm">Manage Users →</a>
+    </div>
+
+    <div class="card nav-card" *ngIf="permissionService.hasPermission('ROLE_VIEW')">
+      <div class="nav-card-head">
+        <span class="n-icon">🛡️</span>
+        <h4>Dynamic Role Engine</h4>
+      </div>
+      <p class="n-desc">Define custom roles (e.g. Cashier, Floor Staff) and map granular module permissions.</p>
+      <a routerLink="/store/roles" class="btn btn-secondary btn-sm">Configure Roles →</a>
+    </div>
+  </div>
+</div>

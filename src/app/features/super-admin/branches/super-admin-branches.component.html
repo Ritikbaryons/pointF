@@ -1,0 +1,59 @@
+<div class="branches-page">
+  <div class="page-header">
+    <div>
+      <h2>All Platform Branches</h2>
+      <p class="subtitle">Directory of all retail outlets and warehouse branches across all stores</p>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="table-responsive">
+      <table class="data-table">
+        <thead>
+          <tr>
+            <th>Branch Name</th>
+            <th>Branch Code</th>
+            <th>Store Tenant</th>
+            <th>City / State</th>
+            <th>Staff Count</th>
+            <th>Status</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr *ngFor="let b of branches">
+            <td>
+              <span class="font-bold">{{ b.name }}</span>
+            </td>
+            <td>
+              <span class="code-pill">{{ b.code }}</span>
+            </td>
+            <td>
+              <div class="store-info">
+                <span>{{ b.store_name }}</span>
+                <span class="text-dim">({{ b.store_code }})</span>
+              </div>
+            </td>
+            <td>{{ b.city || '—' }}{{ b.state ? ', ' + b.state : '' }}</td>
+            <td>
+              <span class="badge badge-role">{{ b.user_count || 0 }} assigned</span>
+            </td>
+            <td>
+              <span class="badge" [ngClass]="b.status === 'ACTIVE' ? 'badge-active' : 'badge-inactive'">
+                {{ b.status }}
+              </span>
+            </td>
+          </tr>
+
+          <tr *ngIf="branches.length === 0">
+            <td colspan="6" class="text-center py-6">
+              <div class="empty-state">
+                <span>📍</span>
+                <p>No branches found across the platform.</p>
+              </div>
+            </td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>

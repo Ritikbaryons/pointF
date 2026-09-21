@@ -1,0 +1,13 @@
+<div class="denied-container">
+  <div class="card denied-card">
+    <div class="denied-icon">🚫</div>
+    <h2>Access Restricted</h2>
+    <p class="denied-desc">
+      You do not have permission or the required store module is not enabled for your store.
+    </p>
+    <div class="action-row">
+      <a routerLink="/store/dashboard" class="btn btn-primary">Return to Dashboard</a>
+      <button (click)="logout()" class="btn btn-secondary">Sign Out</button>
+    </div>
+  </div>
+</div>

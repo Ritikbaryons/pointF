@@ -1,0 +1,223 @@
+<div class="branch-mgmt-page">
+  <div class="page-header">
+    <div>
+      <h2>Branch Management</h2>
+      <p class="subtitle">Physical retail stores and billing counter branches</p>
+    </div>
+    <div>
+      <button *hasPermission="'BRANCH_CREATE'" (click)="openCreateModal()" class="btn btn-primary">
+        <span>➕</span> Create Branch
+      </button>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="table-responsive">
+      <table class="data-table">
+        <thead>
+          <tr>
+            <th>Branch Name</th>
+            <th>Branch Code</th>
+            <th>City / State</th>
+            <th>Licensed Modules</th>
+            <th>Staff</th>
+            <th>Status</th>
+            <th style="text-align: right;">Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr *ngFor="let b of branches">
+            <td>
+              <span class="font-bold">{{ b.name }}</span>
+            </td>
+            <td>
+              <span class="code-pill">{{ b.code }}</span>
+            </td>
+            <td>{{ b.city || '—' }}{{ b.state ? ', ' + b.state : '' }}</td>
+            <td>
+              <div class="branch-module-badges" *ngIf="b.active_modules && b.active_modules.length > 0; else noMods">
+                <span class="mod-pill" *ngFor="let m of b.active_modules.slice(0, 3)" [title]="m.name">
+                  {{ m.name }}
+                </span>
+                <span class="mod-pill mod-pill-more" *ngIf="b.active_modules.length > 3" [title]="b.active_modules.length + ' modules enabled'">
+                  +{{ b.active_modules.length - 3 }} more
+                </span>
+              </div>
+              <ng-template #noMods>
+                <span class="text-muted text-xs">No active modules</span>
+              </ng-template>
+            </td>
+            <td>
+              <span class="badge badge-role">{{ b.user_count || 0 }} staff</span>
+            </td>
+            <td>
+              <span class="badge" [ngClass]="b.status === 'ACTIVE' ? 'badge-active' : 'badge-inactive'">
+                {{ b.status }}
+              </span>
+            </td>
+            <td style="text-align: right;">
+              <div class="btn-group-actions">
+                <button (click)="openModuleModal(b)" class="btn btn-sm btn-outline-info" title="Configure Branch Modules">
+                  ⚙️ Modules
+                </button>
+                <button *hasPermission="'BRANCH_STATUS_UPDATE'"
+                        (click)="toggleStatus(b)"
+                        class="btn btn-sm"
+                        [ngClass]="b.status === 'ACTIVE' ? 'btn-danger' : 'btn-secondary'">
+                  {{ b.status === 'ACTIVE' ? 'Deactivate' : 'Activate' }}
+                </button>
+              </div>
+            </td>
+          </tr>
+
+          <tr *ngIf="branches.length === 0">
+            <td colspan="7" class="text-center py-6">
+              <div class="empty-state">
+                <span>🏢</span>
+                <p>No branches found. Create your store's primary branch to begin assigning staff.</p>
+              </div>
+            </td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- Create Branch Modal -->
+  <div class="modal-overlay" *ngIf="showModal">
+    <div class="modal-card">
+      <div class="modal-header">
+        <h3>Create New Branch</h3>
+        <button (click)="closeModal()" class="btn-close">✕</button>
+      </div>
+
+      <form [formGroup]="branchForm" (ngSubmit)="onSubmit()">
+        <div class="modal-body">
+          <div *ngIf="errorMessage" class="alert-banner alert-danger mb-4">
+            {{ errorMessage }}
+          </div>
+
+          <div class="form-group">
+            <label class="form-label">Branch Name *</label>
+            <input type="text" formControlName="name" class="form-control" placeholder="e.g. Main Market Outlet" />
+            <div *ngIf="submitted && f['name'].errors" class="form-error">Branch name is required</div>
+          </div>
+
+          <div class="form-group">
+            <label class="form-label">Branch Code *</label>
+            <input type="text" formControlName="code" class="form-control" placeholder="e.g. JAIPUR01" style="text-transform: uppercase;" />
+            <div *ngIf="submitted && f['code'].errors" class="form-error">Branch code is required</div>
+          </div>
+
+          <div class="form-group">
+            <label class="form-label">Street Address</label>
+            <input type="text" formControlName="address" class="form-control" placeholder="Shop #12, Market Complex" />
+          </div>
+
+          <div class="form-row">
+            <div class="form-group">
+              <label class="form-label">City</label>
+              <input type="text" formControlName="city" class="form-control" placeholder="Jaipur" />
+            </div>
+            <div class="form-group">
+              <label class="form-label">State</label>
+              <input type="text" formControlName="state" class="form-control" placeholder="Rajasthan" />
+            </div>
+          </div>
+
+          <div class="form-row">
+            <div class="form-group">
+              <label class="form-label">Pincode</label>
+              <input type="text" formControlName="pincode" class="form-control" placeholder="302001" />
+            </div>
+            <div class="form-group">
+              <label class="form-label">Country</label>
+              <input type="text" formControlName="country" class="form-control" />
+            </div>
+          </div>
+
+          <!-- Branch Modules Selection -->
+          <div class="form-group mt-4">
+            <label class="form-label font-bold">Licensed Modules for this Branch</label>
+            <p class="text-xs text-muted mb-2">Select which SaaS modules this specific branch is licensed to use</p>
+            <div class="branch-modules-selector-grid">
+              <div
+                *ngFor="let mod of catalogModules"
+                class="module-check-pill"
+                [class.selected]="isCreateModuleSelected(mod.id)"
+                (click)="toggleCreateModule(mod.id)"
+              >
+                <span class="chk-box">{{ isCreateModuleSelected(mod.id) ? '✓' : '' }}</span>
+                <span class="mod-title">{{ mod.module_name }}</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="modal-footer">
+          <button type="button" (click)="closeModal()" class="btn btn-secondary">Cancel</button>
+          <button type="submit" class="btn btn-primary" [disabled]="loading">
+            <span>{{ loading ? 'Creating...' : 'Create Branch' }}</span>
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Configure Branch Modules Modal -->
+  <div class="modal-overlay" *ngIf="showModuleModal">
+    <div class="modal-card modal-lg">
+      <div class="modal-header">
+        <div>
+          <h3>Configure Branch Modules</h3>
+          <p class="subtitle text-sm" *ngIf="selectedBranchForModules">
+            Branch: <strong>{{ selectedBranchForModules.name }}</strong> ({{ selectedBranchForModules.code }})
+          </p>
+        </div>
+        <button (click)="closeModuleModal()" class="btn-close">✕</button>
+      </div>
+
+      <div class="modal-body">
+        <div *ngIf="moduleSuccessMessage" class="alert-banner alert-success mb-3">
+          {{ moduleSuccessMessage }}
+        </div>
+        <div *ngIf="errorMessage" class="alert-banner alert-danger mb-3">
+          {{ errorMessage }}
+        </div>
+
+        <div *ngIf="loadingModules" class="text-center py-6">
+          <p>Loading modules for branch...</p>
+        </div>
+
+        <div *ngIf="!loadingModules" class="module-config-grid">
+          <div
+            *ngFor="let mod of branchModules"
+            class="branch-module-item"
+            [class.enabled]="mod.is_enabled"
+            (click)="toggleBranchModule(mod)"
+          >
+            <div class="mod-item-header">
+              <span class="mod-name">{{ mod.module_name }}</span>
+              <span class="status-toggle-badge" [class.on]="mod.is_enabled">
+                {{ mod.is_enabled ? 'ENABLED' : 'DISABLED' }}
+              </span>
+            </div>
+            <p class="mod-desc">{{ mod.description || 'Module features' }}</p>
+          </div>
+        </div>
+      </div>
+
+      <div class="modal-footer">
+        <button type="button" (click)="closeModuleModal()" class="btn btn-secondary">Close</button>
+        <button
+          type="button"
+          (click)="saveBranchModules()"
+          class="btn btn-primary"
+          [disabled]="savingModules"
+        >
+          <span>{{ savingModules ? 'Saving...' : 'Save Branch Modules' }}</span>
+        </button>
+      </div>
+    </div>
+  </div>
+</div>

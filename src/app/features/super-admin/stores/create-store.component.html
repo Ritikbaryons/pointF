@@ -1,0 +1,150 @@
+<div class="create-store-page">
+  <div class="page-header">
+    <div>
+      <h2>Create New Store</h2>
+      <p class="subtitle">Onboard a new grocery tenant with module licensing and owner access</p>
+    </div>
+    <a routerLink="/admin/stores" class="btn btn-secondary">
+      <span>←</span> Back to Stores
+    </a>
+  </div>
+
+  <div *ngIf="errorMessage" class="alert-box alert-danger">
+    <span>⚠️</span>
+    <span>{{ errorMessage }}</span>
+  </div>
+
+  <form [formGroup]="storeForm" (ngSubmit)="onSubmit()" class="form-container">
+    <!-- Section 1: Store Information -->
+    <div class="card section-card">
+      <div class="section-title">
+        <span class="step-num">1</span>
+        <div>
+          <h3>Store Information</h3>
+          <p class="section-sub">Basic identification and contact details for the grocery business</p>
+        </div>
+      </div>
+
+      <div class="form-grid">
+        <div class="form-group">
+          <label class="form-label">Store Name *</label>
+          <input type="text" formControlName="name" class="form-control" placeholder="e.g. Sharma Grocery" />
+          <div *ngIf="submitted && f['name'].errors" class="form-error">Store name is required</div>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label">Store Code (Unique) *</label>
+          <input type="text" formControlName="code" class="form-control" placeholder="e.g. SHARMA001" style="text-transform: uppercase;" />
+          <div *ngIf="submitted && f['code'].errors" class="form-error">Store code is required</div>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label">Official Email</label>
+          <input type="email" formControlName="email" class="form-control" placeholder="store@example.com" />
+        </div>
+
+        <div class="form-group">
+          <label class="form-label">Phone Number</label>
+          <input type="text" formControlName="phone" class="form-control" placeholder="+91 9876543210" />
+        </div>
+
+        <div class="form-group col-span-2">
+          <label class="form-label">Street Address</label>
+          <input type="text" formControlName="address" class="form-control" placeholder="Plot 42, Market Complex" />
+        </div>
+
+        <div class="form-group">
+          <label class="form-label">City</label>
+          <input type="text" formControlName="city" class="form-control" placeholder="e.g. Jaipur" />
+        </div>
+
+        <div class="form-group">
+          <label class="form-label">State</label>
+          <input type="text" formControlName="state" class="form-control" placeholder="e.g. Rajasthan" />
+        </div>
+
+        <div class="form-group">
+          <label class="form-label">Postal / Pincode</label>
+          <input type="text" formControlName="pincode" class="form-control" placeholder="e.g. 302001" />
+        </div>
+
+        <div class="form-group">
+          <label class="form-label">Country</label>
+          <input type="text" formControlName="country" class="form-control" />
+        </div>
+      </div>
+    </div>
+
+    <!-- Section 2: Module Access Licensing -->
+    <div class="card section-card">
+      <div class="section-title">
+        <span class="step-num">2</span>
+        <div>
+          <h3>Enabled Store Modules</h3>
+          <p class="section-sub">Select platform modules accessible to this grocery store tenant</p>
+        </div>
+      </div>
+
+      <div class="modules-selection-grid">
+        <div *ngFor="let mod of availableModules" class="module-check-box" [class.checked]="isModuleSelected(mod.id)">
+          <label class="check-label">
+            <input
+              type="checkbox"
+              [checked]="isModuleSelected(mod.id)"
+              (change)="onModuleToggle(mod.id, $event)"
+            />
+            <div class="mod-details">
+              <span class="mod-title">{{ mod.module_name }}</span>
+              <span class="mod-code">{{ mod.module_code }}</span>
+              <span class="mod-desc">{{ mod.description }}</span>
+            </div>
+          </label>
+        </div>
+      </div>
+    </div>
+
+    <!-- Section 3: Store Owner Provisioning -->
+    <div class="card section-card" formGroupName="owner">
+      <div class="section-title">
+        <span class="step-num">3</span>
+        <div>
+          <h3>Store Owner Credentials</h3>
+          <p class="section-sub">Primary administrator account assigned to manage this store</p>
+        </div>
+      </div>
+
+      <div class="form-grid">
+        <div class="form-group">
+          <label class="form-label">Owner Full Name *</label>
+          <input type="text" formControlName="name" class="form-control" placeholder="e.g. Ritik Sharma" />
+          <div *ngIf="submitted && ownerControls['name'].errors" class="form-error">Owner name is required</div>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label">Owner Email *</label>
+          <input type="email" formControlName="email" class="form-control" placeholder="e.g. ritik@sharmagrocery.com" />
+          <div *ngIf="submitted && ownerControls['email'].errors" class="form-error">Valid email is required</div>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label">Owner Phone</label>
+          <input type="text" formControlName="phone" class="form-control" placeholder="+91 9988776655" />
+        </div>
+
+        <div class="form-group">
+          <label class="form-label">Owner Password *</label>
+          <input type="password" formControlName="password" class="form-control" placeholder="Enter secure password" />
+          <div *ngIf="submitted && ownerControls['password'].errors" class="form-error">Password is required</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="form-actions">
+      <a routerLink="/admin/stores" class="btn btn-secondary">Cancel</a>
+      <button type="submit" class="btn btn-primary btn-lg" [disabled]="loading">
+        <span *ngIf="loading" class="spinner"></span>
+        <span>{{ loading ? 'Creating Store...' : 'Create & Provision Store' }}</span>
+      </button>
+    </div>
+  </form>
+</div>

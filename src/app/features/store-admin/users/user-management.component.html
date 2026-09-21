@@ -1,0 +1,151 @@
+<div class="user-mgmt-page">
+  <div class="page-header">
+    <div>
+      <h2>Store Staff & User Management</h2>
+      <p class="subtitle">Cashiers, floor staff, branch managers and store operators</p>
+    </div>
+    <div>
+      <button *hasPermission="'USER_CREATE'" (click)="openCreateModal()" class="btn btn-primary">
+        <span>➕</span> Create User
+      </button>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="table-responsive">
+      <table class="data-table">
+        <thead>
+          <tr>
+            <th>Staff Name</th>
+            <th>Email</th>
+            <th>Phone</th>
+            <th>Role</th>
+            <th>Branch Assignment</th>
+            <th>Status</th>
+            <th style="text-align: right;">Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr *ngFor="let u of users">
+            <td>
+              <div class="user-cell">
+                <span class="user-name">{{ u.name }}</span>
+                <span class="user-id">ID #{{ u.id }}</span>
+              </div>
+            </td>
+            <td>
+              <span class="font-medium">{{ u.email }}</span>
+            </td>
+            <td>{{ u.phone || '—' }}</td>
+            <td>
+              <div class="role-pills">
+                <span *ngFor="let r of u.roles" class="badge badge-role">{{ r.name }}</span>
+                <span *ngIf="!u.roles || u.roles.length === 0" class="text-dim">—</span>
+              </div>
+            </td>
+            <td>
+              <div class="branch-pills">
+                <span *ngFor="let b of u.branches" class="badge badge-active">📍 {{ b.name }}</span>
+                <span *ngIf="!u.branches || u.branches.length === 0" class="text-dim">Store-Wide</span>
+              </div>
+            </td>
+            <td>
+              <span class="badge" [ngClass]="u.status === 'ACTIVE' ? 'badge-active' : 'badge-inactive'">
+                {{ u.status }}
+              </span>
+            </td>
+            <td style="text-align: right;">
+              <button *hasPermission="'USER_STATUS_UPDATE'"
+                      (click)="toggleUserStatus(u)"
+                      class="btn btn-sm"
+                      [ngClass]="u.status === 'ACTIVE' ? 'btn-danger' : 'btn-secondary'">
+                {{ u.status === 'ACTIVE' ? 'Deactivate' : 'Activate' }}
+              </button>
+            </td>
+          </tr>
+
+          <tr *ngIf="users.length === 0">
+            <td colspan="7" class="text-center py-6">
+              <div class="empty-state">
+                <span>👥</span>
+                <p>No staff accounts found. Click "+ Create User" to onboard a cashier or staff member.</p>
+              </div>
+            </td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- Create User Modal -->
+  <div class="modal-backdrop" *ngIf="showModal" (click)="closeModal()">
+    <div class="modal-container" (click)="$event.stopPropagation()">
+      <div class="modal-header">
+        <h3>Create Staff Account</h3>
+        <button class="btn-close" (click)="closeModal()">✕</button>
+      </div>
+
+      <div *ngIf="errorMessage" class="alert-box alert-danger">
+        <span>⚠️</span>
+        <span>{{ errorMessage }}</span>
+      </div>
+
+      <form [formGroup]="userForm" (ngSubmit)="onSubmit()">
+        <div class="modal-body">
+          <div class="form-group">
+            <label class="form-label">Full Name *</label>
+            <input type="text" formControlName="name" class="form-control" placeholder="e.g. Amit Kumar" />
+            <div *ngIf="submitted && f['name'].errors" class="form-error">Full name is required</div>
+          </div>
+
+          <div class="form-row">
+            <div class="form-group">
+              <label class="form-label">Email Address *</label>
+              <input type="email" formControlName="email" class="form-control" placeholder="staff@store.com" />
+              <div *ngIf="submitted && f['email'].errors" class="form-error">Valid email is required</div>
+            </div>
+
+            <div class="form-group">
+              <label class="form-label">Phone Number</label>
+              <input type="text" formControlName="phone" class="form-control" placeholder="+91 9876543210" />
+            </div>
+          </div>
+
+          <div class="form-group">
+            <label class="form-label">Password *</label>
+            <input type="password" formControlName="password" class="form-control" placeholder="Set temporary login password" />
+            <div *ngIf="submitted && f['password'].errors" class="form-error">Password is required</div>
+          </div>
+
+          <div class="form-row">
+            <!-- Role Selection (Filtered to current store) -->
+            <div class="form-group">
+              <label class="form-label">Assigned Role *</label>
+              <select formControlName="roleId" class="form-control">
+                <option value="">Select Role...</option>
+                <option *ngFor="let r of availableRoles" [value]="r.id">{{ r.name }}</option>
+              </select>
+              <div *ngIf="submitted && f['roleId'].errors" class="form-error">Role assignment is required</div>
+            </div>
+
+            <!-- Branch Selection (Filtered to current store) -->
+            <div class="form-group">
+              <label class="form-label">Assigned Branch (Optional)</label>
+              <select formControlName="branchId" class="form-control">
+                <option value="">All Branches / Unrestricted</option>
+                <option *ngFor="let b of availableBranches" [value]="b.id">{{ b.name }} ({{ b.code }})</option>
+              </select>
+            </div>
+          </div>
+        </div>
+
+        <div class="modal-footer">
+          <button type="button" (click)="closeModal()" class="btn btn-secondary">Cancel</button>
+          <button type="submit" class="btn btn-primary" [disabled]="loading">
+            <span>{{ loading ? 'Creating...' : 'Create User' }}</span>
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>

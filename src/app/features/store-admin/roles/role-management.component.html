@@ -1,0 +1,141 @@
+<div class="role-mgmt-page">
+  <div class="page-header">
+    <div>
+      <h2>Dynamic Role Management</h2>
+      <p class="subtitle">Configure custom operational roles and assign granular module permissions</p>
+    </div>
+    <div>
+      <button *hasPermission="'ROLE_CREATE'" (click)="openCreateModal()" class="btn btn-primary">
+        <span>➕</span> Create Custom Role
+      </button>
+    </div>
+  </div>
+
+  <!-- Roles Table -->
+  <div class="card">
+    <div class="table-responsive">
+      <table class="data-table">
+        <thead>
+          <tr>
+            <th>Role Name</th>
+            <th>Description</th>
+            <th>Type</th>
+            <th>Users Assigned</th>
+            <th>Permissions</th>
+            <th style="text-align: right;">Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr *ngFor="let r of roles">
+            <td>
+              <span class="font-bold">{{ r.name }}</span>
+            </td>
+            <td>
+              <span class="text-dim">{{ r.description || '—' }}</span>
+            </td>
+            <td>
+              <span class="badge" [ngClass]="r.is_system_role ? 'badge-role' : 'badge-active'">
+                {{ r.is_system_role ? 'System Role' : 'Custom Role' }}
+              </span>
+            </td>
+            <td>
+              <span class="badge badge-role">{{ r.user_count || 0 }} users</span>
+            </td>
+            <td>
+              <span class="font-bold text-primary">{{ r.permission_count || 0 }} granted</span>
+            </td>
+            <td style="text-align: right;">
+              <div class="action-buttons">
+                <button (click)="openEditModal(r)" class="btn btn-secondary btn-sm" title="Edit Role & Permissions">
+                  ✏️ Edit
+                </button>
+                <button *ngIf="!r.is_system_role"
+                        (click)="deleteRole(r)"
+                        class="btn btn-danger btn-sm" title="Delete Role">
+                  🗑️
+                </button>
+              </div>
+            </td>
+          </tr>
+
+          <tr *ngIf="roles.length === 0">
+            <td colspan="6" class="text-center py-6">
+              <div class="empty-state">
+                <span>🛡️</span>
+                <p>No roles defined for this store yet.</p>
+              </div>
+            </td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- Create / Edit Role Modal -->
+  <div class="modal-backdrop" *ngIf="showModal" (click)="closeModal()">
+    <div class="modal-container role-modal" (click)="$event.stopPropagation()">
+      <div class="modal-header">
+        <h3>{{ editingRoleId ? 'Edit Role & Permissions' : 'Create Custom Role' }}</h3>
+        <button class="btn-close" (click)="closeModal()">✕</button>
+      </div>
+
+      <div *ngIf="errorMessage" class="alert-box alert-danger">
+        <span>⚠️</span>
+        <span>{{ errorMessage }}</span>
+      </div>
+
+      <form [formGroup]="roleForm" (ngSubmit)="onSubmit()">
+        <div class="modal-body">
+          <div class="form-group">
+            <label class="form-label">Role Name *</label>
+            <input type="text" formControlName="name" class="form-control" placeholder="e.g. Cashier, Floor Supervisor" />
+            <div *ngIf="submitted && f['name'].errors" class="form-error">Role name is required</div>
+          </div>
+
+          <div class="form-group">
+            <label class="form-label">Description</label>
+            <input type="text" formControlName="description" class="form-control" placeholder="Brief summary of duties" />
+          </div>
+
+          <div class="permissions-header">
+            <h4>Module Permissions Matrix</h4>
+            <p class="perm-sub">Select capabilities enabled for users assigned to this role</p>
+          </div>
+
+          <!-- Module Grouped Checkbox Sections -->
+          <div class="perm-groups-container">
+            <div *ngFor="let group of permissionGroups" class="perm-group-card">
+              <div class="group-header">
+                <span class="group-badge">{{ group.moduleName }}</span>
+                <button type="button" (click)="toggleAllInGroup(group)" class="btn-link">Toggle All</button>
+              </div>
+
+              <div class="perm-items-grid">
+                <div *ngFor="let p of group.permissions" class="perm-item">
+                  <label class="perm-check-label">
+                    <input
+                      type="checkbox"
+                      [checked]="selectedPermIds.has(p.id)"
+                      (change)="onPermToggle(p.id, $event)"
+                    />
+                    <div class="perm-meta">
+                      <span class="p-name">{{ p.permission_name }}</span>
+                      <span class="p-code">{{ p.permission_code }}</span>
+                    </div>
+                  </label>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="modal-footer">
+          <button type="button" (click)="closeModal()" class="btn btn-secondary">Cancel</button>
+          <button type="submit" class="btn btn-primary" [disabled]="loading">
+            <span>{{ loading ? 'Saving...' : (editingRoleId ? 'Update Role' : 'Create Role') }}</span>
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>

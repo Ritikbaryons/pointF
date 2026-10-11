@@ -1,0 +1,248 @@
+<div class="supplier-page">
+  <!-- Toast / Notifications -->
+  <div *ngIf="successMessage()" class="toast-alert toast-success">
+    <span>✓</span> {{ successMessage() }}
+  </div>
+
+  <div *ngIf="errorMessage() && !isModalOpen()" class="toast-alert toast-danger">
+    <span>⚠️</span> {{ errorMessage() }}
+  </div>
+
+  <!-- Header Action Bar -->
+  <div class="supplier-actions-bar">
+    <div class="search-box-wrap">
+      <span class="search-icon">🔍</span>
+      <input
+        type="text"
+        class="search-input"
+        placeholder="Search suppliers by name, phone or address..."
+        [(ngModel)]="searchTerm"
+        (input)="applyFilter()"
+      />
+      <button *ngIf="searchTerm" (click)="searchTerm=''; applyFilter()" class="btn-clear-search">✕</button>
+    </div>
+
+    <button class="btn btn-primary btn-add" (click)="openAddModal()">
+      <span class="btn-icon">＋</span> Add Supplier
+    </button>
+  </div>
+
+  <!-- Loading State -->
+  <div *ngIf="loading()" class="loading-state">
+    <span class="spinner"></span> Loading suppliers...
+  </div>
+
+  <!-- Suppliers Data Table -->
+  <div *ngIf="!loading()" class="table-container card">
+    <table class="data-table">
+      <thead>
+        <tr>
+          <th>Sr No <span class="sort-arrows">⇅</span></th>
+          <th>Supplier Name <span class="sort-arrows">⇅</span></th>
+          <th>Supplier Type <span class="sort-arrows">⇅</span></th>
+          <th>Address <span class="sort-arrows">⇅</span></th>
+          <th>Contact Number <span class="sort-arrows">⇅</span></th>
+          <th>Created On <span class="sort-arrows">⇅</span></th>
+          <th class="text-center">Action <span class="sort-arrows">⇅</span></th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr *ngFor="let s of paginatedSuppliers; let i = index">
+          <td>{{ (currentPage - 1) * pageSize + i + 1 }}</td>
+          <td class="font-bold">{{ s.supplier_name }}</td>
+          <td>
+            <span class="type-pill" [class.type-offline]="s.supplier_type === 'Offline'">
+              {{ s.supplier_type || 'Offline' }}
+            </span>
+          </td>
+          <td>{{ s.address }}</td>
+          <td class="contact-num">{{ s.contact_number }}</td>
+          <td>{{ formatDate(s.created_at) }}</td>
+          <td class="text-center action-col">
+            <button class="btn-icon-action btn-edit" title="Edit Supplier" (click)="openEditModal(s)">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
+                <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
+              </svg>
+            </button>
+            <button class="btn-icon-action btn-delete" title="Delete Supplier" (click)="openDeleteModal(s)">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <polyline points="3 6 5 6 21 6"></polyline>
+                <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
+                <line x1="10" y1="11" x2="10" y2="17"></line>
+                <line x1="14" y1="11" x2="14" y2="17"></line>
+              </svg>
+            </button>
+          </td>
+        </tr>
+
+        <!-- Empty State -->
+        <tr *ngIf="paginatedSuppliers.length === 0">
+          <td colspan="7" class="empty-cell">
+            <div class="empty-state">
+              <span class="empty-icon">🚚</span>
+              <h4>No Suppliers Found</h4>
+              <p *ngIf="searchTerm">No supplier matches "{{ searchTerm }}"</p>
+              <p *ngIf="!searchTerm">No suppliers registered yet. Click "Add Supplier" to create your first vendor!</p>
+              <button *ngIf="!searchTerm" class="btn btn-primary btn-sm" (click)="openAddModal()">＋ Add Supplier</button>
+            </div>
+          </td>
+        </tr>
+      </tbody>
+    </table>
+
+    <!-- Pagination & Entries Info Bar -->
+    <div class="table-footer" *ngIf="filteredSuppliers().length > 0">
+      <div class="entries-info">
+        Showing {{ startEntry }} to {{ endEntry }} of {{ filteredSuppliers().length }} entries
+      </div>
+
+      <div class="pagination-controls">
+        <button
+          class="page-nav-btn"
+          [disabled]="currentPage === 1"
+          (click)="prevPage()"
+        >
+          Previous
+        </button>
+
+        <button
+          *ngFor="let page of [].constructor(totalPages); let p = index"
+          class="page-num-btn"
+          [class.active]="currentPage === p + 1"
+          (click)="goToPage(p + 1)"
+        >
+          {{ p + 1 }}
+        </button>
+
+        <button
+          class="page-nav-btn"
+          [disabled]="currentPage === totalPages"
+          (click)="nextPage()"
+        >
+          Next
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Add / Edit Supplier Modal Dialog -->
+  <div class="modal-backdrop" *ngIf="isModalOpen()" (click)="closeModal()">
+    <div class="modal-dialog" (click)="$event.stopPropagation()">
+      <!-- Modal Header -->
+      <div class="modal-header">
+        <h3 class="modal-title">{{ isEditMode() ? 'Edit Supplier' : 'Add Supplier' }}</h3>
+        <button class="btn-close-modal" (click)="closeModal()" aria-label="Close">✕</button>
+      </div>
+
+      <!-- Error inside modal -->
+      <div *ngIf="errorMessage()" class="modal-alert alert-danger">
+        <span>⚠️</span> {{ errorMessage() }}
+      </div>
+
+      <!-- Modal Body / Form -->
+      <form [formGroup]="supplierForm" (ngSubmit)="onSubmit()" class="supplier-modal-form">
+        <div class="form-row-grid">
+          <!-- Supplier Name -->
+          <div class="form-field">
+            <label class="form-label">
+              Supplier Name: <span class="required-star">*</span>
+            </label>
+            <input
+              type="text"
+              class="form-control"
+              placeholder="Enter supplier name"
+              formControlName="supplierName"
+              [class.is-invalid]="supplierForm.get('supplierName')?.touched && supplierForm.get('supplierName')?.invalid"
+            />
+            <div class="field-error" *ngIf="supplierForm.get('supplierName')?.touched && supplierForm.get('supplierName')?.invalid">
+              Supplier name is required (min 2 chars).
+            </div>
+          </div>
+
+          <!-- Address -->
+          <div class="form-field">
+            <label class="form-label">
+              Address: <span class="required-star">*</span>
+            </label>
+            <input
+              type="text"
+              class="form-control"
+              placeholder="Enter address"
+              formControlName="address"
+              [class.is-invalid]="supplierForm.get('address')?.touched && supplierForm.get('address')?.invalid"
+            />
+            <div class="field-error" *ngIf="supplierForm.get('address')?.touched && supplierForm.get('address')?.invalid">
+              Address is required.
+            </div>
+          </div>
+
+          <!-- Contact Number -->
+          <div class="form-field">
+            <label class="form-label">
+              Contact Number: <span class="required-star">*</span>
+            </label>
+            <input
+              type="text"
+              class="form-control"
+              placeholder="Enter contact number"
+              formControlName="contactNumber"
+              [class.is-invalid]="supplierForm.get('contactNumber')?.touched && supplierForm.get('contactNumber')?.invalid"
+            />
+            <div class="field-error" *ngIf="supplierForm.get('contactNumber')?.touched && supplierForm.get('contactNumber')?.invalid">
+              Valid contact number is required.
+            </div>
+          </div>
+        </div>
+
+        <!-- Supplier Type & Status optional row -->
+        <div class="form-row-grid secondary-row">
+          <div class="form-field">
+            <label class="form-label">Supplier Type:</label>
+            <select class="form-control" formControlName="supplierType">
+              <option value="Offline">Offline</option>
+              <option value="Online">Online</option>
+              <option value="Wholesale">Wholesale</option>
+              <option value="Direct Producer">Direct Producer</option>
+            </select>
+          </div>
+        </div>
+
+        <!-- Modal Actions -->
+        <div class="modal-footer-actions">
+          <button type="button" class="btn btn-cancel" (click)="closeModal()" [disabled]="submitting()">
+            Cancel
+          </button>
+          <button type="submit" class="btn btn-primary btn-submit" [disabled]="submitting()">
+            <span *ngIf="submitting()" class="spinner-sm"></span>
+            {{ isEditMode() ? 'Update Supplier' : 'Add Supplier' }}
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Delete Confirmation Modal -->
+  <div class="modal-backdrop" *ngIf="isDeleteModalOpen()" (click)="closeDeleteModal()">
+    <div class="modal-dialog modal-dialog-sm" (click)="$event.stopPropagation()">
+      <div class="modal-header">
+        <h3 class="modal-title text-danger">Delete Supplier</h3>
+        <button class="btn-close-modal" (click)="closeDeleteModal()">✕</button>
+      </div>
+
+      <div class="modal-body py-4">
+        <p>Are you sure you want to delete supplier <strong>{{ deletingSupplier()?.supplier_name }}</strong>?</p>
+        <p class="text-dim text-sm mt-1">This action cannot be undone.</p>
+      </div>
+
+      <div class="modal-footer-actions">
+        <button type="button" class="btn btn-cancel" (click)="closeDeleteModal()" [disabled]="submitting()">
+          Cancel
+        </button>
+        <button type="button" class="btn btn-danger" (click)="confirmDelete()" [disabled]="submitting()">
+          <span *ngIf="submitting()" class="spinner-sm"></span> Delete
+        </button>
+      </div>
+    </div>
+  </div>
+</div>

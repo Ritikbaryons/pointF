@@ -1,7 +1,7 @@
 import { Component, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { RouterLink } from '@angular/router';
-import { StoreService } from '../../../core/services/store.service';
+import { ApiService } from '../../../core/services/api.services';
 import { DashboardMetrics } from '../../../core/models/store.model';
 
 @Component({
@@ -14,10 +14,10 @@ import { DashboardMetrics } from '../../../core/models/store.model';
 export class SuperAdminDashboardComponent implements OnInit {
   metrics: DashboardMetrics | null = null;
 
-  constructor(private storeService: StoreService) {}
+  constructor(private apiService: ApiService) {}
 
   ngOnInit(): void {
-    this.storeService.getDashboardMetrics().subscribe({
+    this.apiService.getDashboardMetrics().subscribe({
       next: (res) => {
         if (res.success) {
           this.metrics = res.data;

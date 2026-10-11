@@ -2,11 +2,11 @@
   <div class="page-header">
     <div>
       <h2>Store Staff & User Management</h2>
-      <p class="subtitle">Cashiers, floor staff, branch managers and store operators</p>
+      <p class="subtitle">Manage store operators, branch managers, cashiers, and floor staff</p>
     </div>
     <div>
       <button *hasPermission="'USER_CREATE'" (click)="openCreateModal()" class="btn btn-primary">
-        <span>➕</span> Create User
+        <span>➕</span> Add User
       </button>
     </div>
   </div>
@@ -16,11 +16,11 @@
       <table class="data-table">
         <thead>
           <tr>
-            <th>Staff Name</th>
-            <th>Email</th>
-            <th>Phone</th>
+            <th>User</th>
+            <th>Contact Details</th>
             <th>Role</th>
             <th>Branch Assignment</th>
+            <th>Shift / Off Days</th>
             <th>Status</th>
             <th style="text-align: right;">Actions</th>
           </tr>
@@ -28,15 +28,28 @@
         <tbody>
           <tr *ngFor="let u of users">
             <td>
-              <div class="user-cell">
-                <span class="user-name">{{ u.name }}</span>
-                <span class="user-id">ID #{{ u.id }}</span>
+              <div class="user-cell-extended">
+                <div class="user-avatar-tiny" *ngIf="u.photo_url">
+                  <img [src]="u.photo_url" alt="{{ u.name }}" />
+                </div>
+                <div class="user-avatar-tiny placeholder" *ngIf="!u.photo_url">
+                  {{ u.name.charAt(0).toUpperCase() }}
+                </div>
+                <div class="user-info-text">
+                  <span class="user-name">{{ u.name }}</span>
+                  <span class="user-email-sub">{{ u.email }}</span>
+                  <span class="user-id" *ngIf="u.id_card_no">ID: {{ u.id_card_no }}</span>
+                </div>
               </div>
             </td>
             <td>
-              <span class="font-medium">{{ u.email }}</span>
+              <div class="contact-details-cell">
+                <span class="font-medium">{{ u.phone || '—' }}</span>
+                <span class="text-dim text-xs" *ngIf="u.city_name || u.country_name">
+                  📍 {{ u.city_name ? u.city_name + ', ' : '' }}{{ u.country_name || '' }}
+                </span>
+              </div>
             </td>
-            <td>{{ u.phone || '—' }}</td>
             <td>
               <div class="role-pills">
                 <span *ngFor="let r of u.roles" class="badge badge-role">{{ r.name }}</span>
@@ -50,17 +63,45 @@
               </div>
             </td>
             <td>
+              <div class="shift-cell">
+                <span class="shift-name" *ngIf="u.shift_timing">{{ u.shift_timing }}</span>
+                <span class="text-dim" *ngIf="!u.shift_timing">—</span>
+                <span class="off-days-tag" *ngIf="u.off_days && u.off_days.length > 0">
+                  Off: {{ u.off_days.join(', ') }}
+                </span>
+              </div>
+            </td>
+            <td>
               <span class="badge" [ngClass]="u.status === 'ACTIVE' ? 'badge-active' : 'badge-inactive'">
                 {{ u.status }}
               </span>
             </td>
             <td style="text-align: right;">
-              <button *hasPermission="'USER_STATUS_UPDATE'"
-                      (click)="toggleUserStatus(u)"
-                      class="btn btn-sm"
-                      [ngClass]="u.status === 'ACTIVE' ? 'btn-danger' : 'btn-secondary'">
-                {{ u.status === 'ACTIVE' ? 'Deactivate' : 'Activate' }}
-              </button>
+              <div class="actions-group">
+                <button
+                  class="btn btn-sm btn-edit-action"
+                  (click)="openEditModal(u)"
+                  title="Edit Staff User"
+                >
+                  <span>✏️</span> Edit
+                </button>
+                <button
+                  class="btn btn-sm btn-link-action"
+                  (click)="openLinkModal(u)"
+                  title="Link Store & Outlets / Change Role"
+                >
+                  <span>🔗</span> Link Branch
+                </button>
+                <button
+                  *hasPermission="'USER_STATUS_UPDATE'"
+                  (click)="toggleUserStatus(u)"
+                  class="btn btn-sm"
+                  [ngClass]="u.status === 'ACTIVE' ? 'btn-danger-ghost' : 'btn-success-ghost'"
+                  title="Toggle user active status"
+                >
+                  {{ u.status === 'ACTIVE' ? 'Deactivate' : 'Activate' }}
+                </button>
+              </div>
             </td>
           </tr>
 
@@ -68,7 +109,7 @@
             <td colspan="7" class="text-center py-6">
               <div class="empty-state">
                 <span>👥</span>
-                <p>No staff accounts found. Click "+ Create User" to onboard a cashier or staff member.</p>
+                <p>No staff accounts found. Click "+ Add User" to onboard a cashier or staff member.</p>
               </div>
             </td>
           </tr>
@@ -77,11 +118,19 @@
     </div>
   </div>
 
-  <!-- Create User Modal -->
+  <!-- Add User Modal -->
   <div class="modal-backdrop" *ngIf="showModal" (click)="closeModal()">
-    <div class="modal-container" (click)="$event.stopPropagation()">
+    <div class="modal-card modal-lg" (click)="$event.stopPropagation()">
       <div class="modal-header">
-        <h3>Create Staff Account</h3>
+        <div class="modal-title-group">
+          <div class="modal-icon">{{ isEditMode ? '✏️' : '👤' }}</div>
+          <div>
+            <h3>{{ isEditMode ? 'Edit User' : 'Add User' }}</h3>
+            <p class="modal-sub">
+              {{ isEditMode ? 'Update staff profile details, roles, shifts, and credentials' : 'Create complete staff profile with access roles, shifts, and credentials' }}
+            </p>
+          </div>
+        </div>
         <button class="btn-close" (click)="closeModal()">✕</button>
       </div>
 
@@ -90,62 +139,517 @@
         <span>{{ errorMessage }}</span>
       </div>
 
-      <form [formGroup]="userForm" (ngSubmit)="onSubmit()">
-        <div class="modal-body">
-          <div class="form-group">
-            <label class="form-label">Full Name *</label>
-            <input type="text" formControlName="name" class="form-control" placeholder="e.g. Amit Kumar" />
-            <div *ngIf="submitted && f['name'].errors" class="form-error">Full name is required</div>
+      <form [formGroup]="userForm" (ngSubmit)="onSubmit()" class="modal-scroll-form">
+        <div class="modal-body-content">
+          <!-- Row 1: User Name & Password -->
+          <div class="form-grid-2">
+            <div class="form-group">
+              <label class="form-label">
+                User Name <span class="required-star">*</span>
+              </label>
+              <input
+                type="text"
+                formControlName="name"
+                class="form-control"
+                placeholder="Enter User Name"
+                [class.is-invalid]="submitted && f['name'].errors"
+              />
+              <div *ngIf="submitted && f['name'].errors" class="form-error">User Name is required</div>
+            </div>
+
+            <div class="form-group">
+              <label class="form-label">
+                Password <span class="required-star" *ngIf="!isEditMode">*</span>
+                <span class="text-dim text-xs" *ngIf="isEditMode">(Leave blank to keep existing)</span>
+              </label>
+              <div class="input-password-wrapper">
+                <input
+                  [type]="showPassword ? 'text' : 'password'"
+                  formControlName="password"
+                  class="form-control"
+                  [placeholder]="isEditMode ? 'Enter new password to change' : 'Enter Password'"
+                  [class.is-invalid]="submitted && (!isPasswordValid || (!isEditMode && f['password'].errors))"
+                />
+                <button
+                  type="button"
+                  class="btn-toggle-eye"
+                  (click)="showPassword = !showPassword"
+                  title="Toggle password visibility"
+                >
+                  {{ showPassword ? '👁️' : '👁️‍🗨️' }}
+                </button>
+              </div>
+
+              <!-- Password Security Requirements Checklist -->
+              <div class="pwd-checklist" *ngIf="!isEditMode || passwordVal">
+                <div class="checklist-item" [class.valid]="hasMinMaxLen">
+                  <span class="chk-icon">{{ hasMinMaxLen ? '✓' : '○' }}</span>
+                  <span>At least minimum 6 characters and maximum 16 characters</span>
+                </div>
+                <div class="checklist-item" [class.valid]="hasUpperLower">
+                  <span class="chk-icon">{{ hasUpperLower ? '✓' : '○' }}</span>
+                  <span>Includes upper and lower case letters</span>
+                </div>
+                <div class="checklist-item" [class.valid]="hasNumber">
+                  <span class="chk-icon">{{ hasNumber ? '✓' : '○' }}</span>
+                  <span>At least one number</span>
+                </div>
+                <div class="checklist-item" [class.valid]="hasSpecialChar">
+                  <span class="chk-icon">{{ hasSpecialChar ? '✓' : '○' }}</span>
+                  <span>At least one special character (&#64;, $, !, %, etc.)</span>
+                </div>
+              </div>
+            </div>
           </div>
 
-          <div class="form-row">
+          <!-- Row 2: Confirm Password & Branch (Optional) -->
+          <div class="form-grid-2">
             <div class="form-group">
-              <label class="form-label">Email Address *</label>
-              <input type="email" formControlName="email" class="form-control" placeholder="staff@store.com" />
+              <label class="form-label">
+                Confirm Password <span class="required-star" *ngIf="!isEditMode || passwordVal">*</span>
+              </label>
+              <div class="input-password-wrapper">
+                <input
+                  [type]="showConfirmPassword ? 'text' : 'password'"
+                  formControlName="confirmPassword"
+                  class="form-control"
+                  placeholder="Confirm Password"
+                  [class.is-invalid]="submitted && (!passwordsMatch || (!isEditMode && f['confirmPassword'].errors))"
+                />
+                <button
+                  type="button"
+                  class="btn-toggle-eye"
+                  (click)="showConfirmPassword = !showConfirmPassword"
+                >
+                  {{ showConfirmPassword ? '👁️' : '👁️‍🗨️' }}
+                </button>
+              </div>
+              <div *ngIf="submitted && !passwordsMatch && confirmPasswordVal" class="form-error">
+                Passwords do not match
+              </div>
+              <div *ngIf="submitted && !isEditMode && f['confirmPassword'].errors" class="form-error">
+                Confirm password is required
+              </div>
+            </div>
+
+            <div class="form-group">
+              <label class="form-label">Assigned Branch (Optional)</label>
+              <select formControlName="branchId" class="form-control">
+                <option value="">All Branches / Store-Wide Access</option>
+                <option *ngFor="let b of availableBranches" [value]="b.id">
+                  📍 {{ b.name }} ({{ b.code }})
+                </option>
+              </select>
+            </div>
+          </div>
+
+          <!-- Phone Numbers Section Card -->
+          <div class="phone-section-card">
+            <div class="phone-section-header">
+              <span class="section-title">Phone Numbers</span>
+            </div>
+
+            <div class="phone-list">
+              <div class="phone-row" *ngFor="let p of phoneList; let i = index">
+                <div class="phone-label-col" *ngIf="i === 0">
+                  <label class="form-label mb-0">Phone Number <span class="required-star">*</span></label>
+                </div>
+                <div class="phone-label-col" *ngIf="i > 0">
+                  <span class="secondary-phone-label">Secondary Number #{{ i + 1 }}</span>
+                </div>
+
+                <div class="phone-inputs-row">
+                  <div class="dial-code-select-wrap">
+                    <select
+                      class="dial-code-select"
+                      [value]="p.countryCode"
+                      (change)="onDialCodeChange(i, $any($event.target).value)"
+                    >
+                      <option *ngFor="let dc of dialCodes" [value]="dc.code">
+                        {{ dc.flag }} {{ dc.code }}
+                      </option>
+                    </select>
+                  </div>
+
+                  <input
+                    type="tel"
+                    [(ngModel)]="p.number"
+                    [ngModelOptions]="{standalone: true}"
+                    class="form-control phone-input"
+                    placeholder="Enter Phone Number"
+                  />
+
+                  <label class="primary-radio-label">
+                    <input
+                      type="radio"
+                      name="primaryPhoneSelection"
+                      [checked]="p.isPrimary"
+                      (change)="setPrimaryPhone(i)"
+                    />
+                    <span>Primary Number</span>
+                  </label>
+
+                  <button
+                    type="button"
+                    class="btn-delete-phone"
+                    (click)="removePhone(i)"
+                    title="Remove phone number"
+                    *ngIf="phoneList.length > 1"
+                  >
+                    🗑️
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            <div class="phone-section-footer">
+              <button type="button" class="btn-add-phone" (click)="addPhone()">
+                <span>➕</span> Add Phone No
+              </button>
+            </div>
+          </div>
+
+          <!-- Row 3: Email & Joining Date -->
+          <div class="form-grid-2">
+            <div class="form-group">
+              <label class="form-label">
+                Email (Login Username) <span class="required-star">*</span>
+              </label>
+              <input
+                type="email"
+                formControlName="email"
+                class="form-control"
+                placeholder="Enter Email"
+                [class.is-invalid]="submitted && f['email'].errors"
+              />
               <div *ngIf="submitted && f['email'].errors" class="form-error">Valid email is required</div>
             </div>
 
             <div class="form-group">
-              <label class="form-label">Phone Number</label>
-              <input type="text" formControlName="phone" class="form-control" placeholder="+91 9876543210" />
+              <label class="form-label">Joining Date</label>
+              <input
+                type="date"
+                formControlName="joiningDate"
+                class="form-control date-picker"
+                placeholder="mm/dd/yyyy"
+              />
             </div>
           </div>
 
+          <!-- Row 4: Address -->
           <div class="form-group">
-            <label class="form-label">Password *</label>
-            <input type="password" formControlName="password" class="form-control" placeholder="Set temporary login password" />
-            <div *ngIf="submitted && f['password'].errors" class="form-error">Password is required</div>
+            <label class="form-label">
+              Address <span class="required-star">*</span>
+            </label>
+            <textarea
+              formControlName="address"
+              class="form-control textarea-address"
+              placeholder="Enter Address"
+              rows="3"
+              [class.is-invalid]="submitted && f['address'].errors"
+            ></textarea>
+            <div *ngIf="submitted && f['address'].errors" class="form-error">Address is required</div>
           </div>
 
-          <div class="form-row">
-            <!-- Role Selection (Filtered to current store) -->
+          <!-- Row 5: Select Country & Select City -->
+          <div class="form-grid-2">
             <div class="form-group">
-              <label class="form-label">Assigned Role *</label>
-              <select formControlName="roleId" class="form-control">
-                <option value="">Select Role...</option>
-                <option *ngFor="let r of availableRoles" [value]="r.id">{{ r.name }}</option>
+              <label class="form-label">
+                Select Country <span class="required-star">*</span>
+              </label>
+              <select
+                formControlName="countryId"
+                class="form-control"
+                (change)="onCountryChange()"
+                [class.is-invalid]="submitted && f['countryId'].errors"
+              >
+                <option value="">Select Country...</option>
+                <option *ngFor="let c of countries" [value]="c.id">
+                  {{ c.name }}
+                </option>
               </select>
-              <div *ngIf="submitted && f['roleId'].errors" class="form-error">Role assignment is required</div>
+              <div *ngIf="submitted && f['countryId'].errors" class="form-error">Country is required</div>
             </div>
 
-            <!-- Branch Selection (Filtered to current store) -->
             <div class="form-group">
-              <label class="form-label">Assigned Branch (Optional)</label>
-              <select formControlName="branchId" class="form-control">
-                <option value="">All Branches / Unrestricted</option>
-                <option *ngFor="let b of availableBranches" [value]="b.id">{{ b.name }} ({{ b.code }})</option>
+              <label class="form-label">
+                Select City <span class="required-star">*</span>
+              </label>
+              <select
+                formControlName="cityId"
+                class="form-control"
+                [disabled]="loadingCities"
+                [class.is-invalid]="submitted && f['cityId'].errors"
+              >
+                <option value="">
+                  {{ loadingCities ? 'Loading cities...' : 'Select City...' }}
+                </option>
+                <option *ngFor="let city of cities" [value]="city.id">
+                  {{ city.name }}
+                </option>
               </select>
+              <div *ngIf="submitted && f['cityId'].errors" class="form-error">City is required</div>
+            </div>
+          </div>
+
+          <!-- Row 6: Select Role & Void Password -->
+          <div class="form-grid-2">
+            <div class="form-group">
+              <label class="form-label">
+                Select Role <span class="required-star">*</span>
+              </label>
+              <select
+                formControlName="roleId"
+                class="form-control"
+                [class.is-invalid]="submitted && f['roleId'].errors"
+              >
+                <option value="">Select Role...</option>
+                <option *ngFor="let r of availableRoles" [value]="r.id">
+                  {{ r.name }}
+                </option>
+              </select>
+              <div *ngIf="submitted && f['roleId'].errors" class="form-error">Role is required</div>
+            </div>
+
+            <div class="form-group">
+              <label class="form-label">Void Password</label>
+              <input
+                type="password"
+                formControlName="voidPassword"
+                class="form-control"
+                placeholder="Enter Void Password (optional for authorization override)"
+              />
+            </div>
+          </div>
+
+          <!-- Row 7: Photo Upload Card -->
+          <div class="photo-upload-section">
+            <label class="form-label">Profile Photo</label>
+            <div class="photo-dropzone" (click)="photoFileInput.click()">
+              <input
+                #photoFileInput
+                type="file"
+                accept="image/*"
+                class="hidden-file-input"
+                (change)="onPhotoSelected($event)"
+              />
+              <div *ngIf="!photoPreview" class="photo-upload-placeholder">
+                <div class="upload-icon-circle">
+                  <span>☁️</span>
+                </div>
+                <div class="upload-text">
+                  <span class="upload-prompt-title">Upload Photo</span>
+                  <span class="upload-prompt-sub">Click to browse PNG, JPG or WEBP (Max 5MB)</span>
+                </div>
+              </div>
+
+              <div *ngIf="photoPreview" class="photo-preview-box" (click)="$event.stopPropagation()">
+                <img [src]="photoPreview" alt="Selected profile preview" class="preview-img" />
+                <div class="photo-preview-actions">
+                  <span class="photo-ready-text">✓ Photo Selected</span>
+                  <div class="btn-group-preview">
+                    <button type="button" class="btn btn-xs btn-secondary" (click)="photoFileInput.click()">
+                      Change
+                    </button>
+                    <button type="button" class="btn btn-xs btn-danger-ghost" (click)="removePhoto()">
+                      Remove
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Row 8: ID Card No & Shift Timing -->
+          <div class="form-grid-2">
+            <div class="form-group">
+              <label class="form-label">Id Card No</label>
+              <input
+                type="text"
+                formControlName="idCardNo"
+                class="form-control"
+                placeholder="Enter Id Card Number"
+              />
+            </div>
+
+            <div class="form-group">
+              <label class="form-label">
+                <span class="required-star">*</span> Shift Timing
+              </label>
+              <select
+                formControlName="shiftTiming"
+                class="form-control"
+                [class.is-invalid]="submitted && f['shiftTiming'].errors"
+              >
+                <option value="">Select Shift Timing...</option>
+                <option *ngFor="let s of shiftOptions" [value]="s">
+                  {{ s }}
+                </option>
+              </select>
+              <div *ngIf="submitted && f['shiftTiming'].errors" class="form-error">Shift timing is required</div>
+            </div>
+          </div>
+
+          <!-- Row 9: Off Days Selection -->
+          <div class="off-days-card">
+            <div class="off-days-header">
+              <span class="off-days-title">Off Days</span>
+              <label class="select-all-days-label">
+                <input
+                  type="checkbox"
+                  [checked]="isAllOffDaysSelected()"
+                  (change)="toggleSelectAllOffDays($event)"
+                />
+                <span>Select All</span>
+              </label>
+            </div>
+
+            <div class="days-checkbox-row">
+              <label
+                *ngFor="let day of daysOfWeek"
+                class="day-pill-check"
+                [class.checked]="offDaysState[day]"
+              >
+                <input
+                  type="checkbox"
+                  [checked]="offDaysState[day]"
+                  (change)="toggleDay(day)"
+                />
+                <span>{{ day }}</span>
+              </label>
             </div>
           </div>
         </div>
 
         <div class="modal-footer">
-          <button type="button" (click)="closeModal()" class="btn btn-secondary">Cancel</button>
+          <button type="button" (click)="closeModal()" class="btn btn-secondary">
+            Cancel
+          </button>
           <button type="submit" class="btn btn-primary" [disabled]="loading">
-            <span>{{ loading ? 'Creating...' : 'Create User' }}</span>
+            <span *ngIf="loading" class="spinner"></span>
+            <span>{{ loading ? 'Saving...' : (isEditMode ? 'Update User' : 'Save') }}</span>
           </button>
         </div>
       </form>
+    </div>
+  </div>
+
+  <!-- Link Store & Outlets Modal -->
+  <div class="modal-backdrop" *ngIf="showLinkModal">
+    <div class="modal-card modal-md">
+      <div class="modal-header">
+        <div class="modal-title-group">
+          <div class="modal-icon">🔗</div>
+          <div>
+            <h3>Link Store & Outlets to User</h3>
+            <p class="modal-sub">Assign physical branches/outlets and role for this staff member</p>
+          </div>
+        </div>
+        <button class="btn-close" (click)="closeLinkModal()">✕</button>
+      </div>
+
+      <div class="modal-body">
+        <!-- User Info Strip -->
+        <div class="user-summary-card">
+          <div class="summary-col">
+            <span class="summary-label">User Name</span>
+            <span class="summary-val font-bold">{{ selectedUserForLink?.name }}</span>
+          </div>
+          <div class="summary-col">
+            <span class="summary-label">Email</span>
+            <span class="summary-val text-dim">{{ selectedUserForLink?.email }}</span>
+          </div>
+          <div class="summary-col">
+            <span class="summary-label">Current Role</span>
+            <span class="badge badge-role">{{ selectedUserForLink?.roles?.[0]?.name || 'Staff' }}</span>
+          </div>
+        </div>
+
+        <div *ngIf="linkErrorMessage" class="alert-box alert-danger mb-3">
+          <span>⚠️</span> {{ linkErrorMessage }}
+        </div>
+        <div *ngIf="linkSuccessMessage" class="alert-box alert-success mb-3">
+          <span>✓</span> {{ linkSuccessMessage }}
+        </div>
+
+        <!-- Role Update Selector -->
+        <div class="form-group mb-4">
+          <label class="form-label font-bold">Role in this Store *</label>
+          <select class="form-control select-control" [(ngModel)]="linkRoleId">
+            <option *ngFor="let r of availableRoles" [value]="r.id">{{ r.name }}</option>
+          </select>
+        </div>
+
+        <!-- Store Selection -->
+        <div class="form-group mb-4">
+          <label class="form-label font-bold">
+            <span class="required">*</span> Select Store:
+          </label>
+
+          <select
+            *ngIf="authService.isSuperAdmin()"
+            class="form-control select-control"
+            [ngModel]="linkStoreId"
+            (ngModelChange)="onLinkStoreChange($event)"
+          >
+            <option *ngFor="let s of allStores" [value]="s.id">
+              {{ s.name }} ({{ s.code }})
+            </option>
+          </select>
+
+          <div *ngIf="!authService.isSuperAdmin()" class="store-locked-pill">
+            <span>🏬</span>
+            <span class="font-bold">{{ linkStoreName || authService.currentUser()?.storeName || 'Current Store' }}</span>
+            <span class="locked-tag">(Your Store)</span>
+          </div>
+        </div>
+
+        <!-- Branch / Outlet Checkbox List -->
+        <div class="outlets-section">
+          <div class="outlets-header">
+            <label class="select-all-label">
+              <input
+                type="checkbox"
+                [checked]="areAllBranchesSelected()"
+                (change)="toggleSelectAllLinkBranches()"
+              />
+              <span class="font-bold">Select All</span>
+            </label>
+            <span class="outlet-count-badge">
+              {{ selectedLinkBranchIds.size }} of {{ linkStoreBranches.length }} Outlets Selected
+            </span>
+          </div>
+
+          <div class="outlets-list-grid">
+            <div
+              *ngFor="let b of linkStoreBranches"
+              class="outlet-check-card"
+              [class.checked]="isLinkBranchSelected(b.id)"
+              (click)="toggleLinkBranch(b.id)"
+            >
+              <div class="outlet-chk">
+                <span *ngIf="isLinkBranchSelected(b.id)">✓</span>
+              </div>
+              <div class="outlet-details">
+                <span class="outlet-name">{{ b.name }}</span>
+                <span class="outlet-code">{{ b.code }}</span>
+              </div>
+            </div>
+
+            <div *ngIf="linkStoreBranches.length === 0" class="empty-outlets text-dim">
+              No branches found for this store.
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" (click)="closeLinkModal()">Cancel</button>
+        <button type="button" class="btn btn-primary" (click)="saveBranchLinks()" [disabled]="savingLink">
+          <span *ngIf="savingLink" class="spinner"></span>
+          <span>{{ savingLink ? 'Saving...' : 'Save' }}</span>
+        </button>
+      </div>
     </div>
   </div>
 </div>

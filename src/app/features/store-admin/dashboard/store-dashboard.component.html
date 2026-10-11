@@ -1,10 +1,16 @@
 <div class="store-dashboard">
+  <!-- Active Branch Context Banner -->
   <div class="welcome-banner card">
     <div class="banner-left">
-      <div class="store-tag">🏬 STORE CONTEXT</div>
-      <h2>{{ authService.currentUser()?.storeName || 'My Grocery Store' }}</h2>
+      <div class="branch-tag">📍 ACTIVE BRANCH CONTEXT</div>
+      <h2>{{ activeBranch?.name || 'Store Branch' }}</h2>
       <p class="store-meta">
-        Store Code: <span class="code-highlight">{{ authService.currentUser()?.storeCode }}</span>
+        Store: <span class="code-highlight">{{ authService.currentUser()?.storeName }} ({{ authService.currentUser()?.storeCode }})</span>
+        &nbsp;•&nbsp; Branch Code: <span class="code-highlight">{{ activeBranch?.code || '—' }}</span>
+        &nbsp;•&nbsp; Hours: <span class="time-highlight">🕒 {{ (activeBranch?.opening_time || '08:00') }} - {{ (activeBranch?.closing_time || '22:00') }}</span>
+      </p>
+      <p class="store-sub-meta">
+        Location: <span>📍 {{ activeBranch?.address ? activeBranch?.address + ', ' + activeBranch?.city : (activeBranch?.city || 'Registered Store Location') }}</span>
         &nbsp;•&nbsp; Logged in as: <strong>{{ authService.currentUser()?.name }}</strong>
         &nbsp;•&nbsp; Role: <span class="badge badge-role">{{ userRole }}</span>
       </p>
@@ -12,48 +18,82 @@
 
     <div class="banner-right">
       <div class="assigned-branches-box">
-        <span class="branch-label">Branch Access Scope</span>
+        <span class="branch-label">Switch Active Branch</span>
         <div class="branch-pill-group">
-          <span *ngIf="authService.userBranches().length === 0" class="badge badge-active">All Store Branches (Store Owner)</span>
-          <span *ngFor="let b of authService.userBranches()" class="badge badge-role">📍 {{ b.name }} ({{ b.code }})</span>
+          <button
+            *ngFor="let b of accessibleBranches"
+            type="button"
+            class="branch-select-btn"
+            [class.active-branch-btn]="b.id === activeBranch?.id"
+            (click)="switchBranch(b.id)"
+          >
+            <span class="active-dot" *ngIf="b.id === activeBranch?.id">🟢</span>
+            <span>📍 {{ b.name }} ({{ b.code }})</span>
+            <span class="selected-tag" *ngIf="b.id === activeBranch?.id">SELECTED</span>
+          </button>
         </div>
       </div>
     </div>
   </div>
 
-  <!-- Quick Metrics -->
+  <!-- Branch-Specific Metrics Row -->
   <div class="metrics-row">
+    <!-- Metric 1: Branch Code & Status -->
     <div class="card metric-box">
       <span class="m-icon">🏢</span>
       <div>
-        <div class="m-val">{{ branchCount }}</div>
-        <div class="m-lbl">Active Branches</div>
+        <div class="m-val">{{ activeBranch?.code || '—' }}</div>
+        <div class="m-lbl">Active Branch Outlet</div>
+        <div class="m-sub">Status: <span class="text-success">🟢 {{ activeBranch?.status || 'ACTIVE' }}</span></div>
       </div>
     </div>
 
+    <!-- Metric 2: Branch Daily Operating Hours -->
+    <div class="card metric-box">
+      <span class="m-icon">🕒</span>
+      <div>
+        <div class="m-val text-time">{{ (activeBranch?.opening_time || '08:00') }} - {{ (activeBranch?.closing_time || '22:00') }}</div>
+        <div class="m-lbl">Branch Operating Hours</div>
+        <div class="m-sub">Daily POS & Store Schedule</div>
+      </div>
+    </div>
+
+    <!-- Metric 3: Staff Assigned to this Branch -->
     <div class="card metric-box">
       <span class="m-icon">👥</span>
       <div>
-        <div class="m-val">{{ userCount }}</div>
-        <div class="m-lbl">Store Staff & Users</div>
+        <div class="m-val">{{ branchStaffCount }}</div>
+        <div class="m-lbl">Assigned Branch Staff</div>
+        <div class="m-sub">Users assigned to this branch</div>
       </div>
     </div>
 
+    <!-- Metric 4: Branch Licensed Modules -->
     <div class="card metric-box">
-      <span class="m-icon">🛡️</span>
+      <span class="m-icon">⚙️</span>
       <div>
-        <div class="m-val">{{ roleCount }}</div>
-        <div class="m-lbl">Configured Roles</div>
+        <div class="m-val">{{ branchActiveModuleCount }} <span class="m-total">/ {{ allCatalogModules.length }}</span></div>
+        <div class="m-lbl">Licensed Branch Modules</div>
+        <div class="m-sub">Active features for this branch</div>
       </div>
     </div>
   </div>
 
-  <!-- Store Module License Status Matrix -->
+  <!-- Branch Module License Status Matrix -->
   <div class="card module-status-card">
     <div class="card-header">
-      <div>
-        <h3>Store Module Availability (Super Admin Licensed)</h3>
-        <p class="subtitle">Two-level access: Features are only operational if enabled here AND granted to your role</p>
+      <div class="header-content">
+        <div>
+          <h3>Branch Module Availability — <span class="branch-name-title">{{ activeBranch?.name || 'Selected Branch' }}</span></h3>
+          <p class="subtitle">
+            Showing SaaS modules enabled exclusively for <strong>{{ activeBranch?.name }} ({{ activeBranch?.code }})</strong>.
+            Modules disabled here cannot be accessed in this branch context.
+          </p>
+        </div>
+        <div class="active-badge-indicator">
+          <span>Active Context: </span>
+          <span class="badge badge-active">📍 {{ activeBranch?.name }} ({{ activeBranch?.code }})</span>
+        </div>
       </div>
     </div>
 
@@ -64,7 +104,7 @@
         <span class="status-symbol">{{ isModuleEnabled(mod.module_code) ? '✓' : '✕' }}</span>
         <div class="mod-meta">
           <span class="mod-name">{{ mod.module_name }}</span>
-          <span class="mod-state">{{ isModuleEnabled(mod.module_code) ? 'Enabled' : 'Disabled by Platform' }}</span>
+          <span class="mod-state">{{ isModuleEnabled(mod.module_code) ? 'Enabled in this Branch' : 'Disabled for this Branch' }}</span>
         </div>
       </div>
     </div>
@@ -72,30 +112,30 @@
 
   <!-- Navigation Cards -->
   <div class="nav-cards-grid">
-    <div class="card nav-card" *ngIf="permissionService.hasPermission('BRANCH_VIEW')">
+    <div class="card nav-card">
       <div class="nav-card-head">
         <span class="n-icon">🏢</span>
         <h4>Branch Management</h4>
       </div>
-      <p class="n-desc">Set up and manage physical store outlets, market counters, and branch codes.</p>
+      <p class="n-desc">Set up and manage physical store outlets, market counters, and branch operational hours.</p>
       <a routerLink="/store/branches" class="btn btn-secondary btn-sm">Manage Branches →</a>
     </div>
 
-    <div class="card nav-card" *ngIf="permissionService.hasPermission('USER_VIEW')">
+    <div class="card nav-card">
       <div class="nav-card-head">
         <span class="n-icon">👥</span>
         <h4>Staff & User Management</h4>
       </div>
-      <p class="n-desc">Create cashier and staff accounts, assigning them specific roles and branch locations.</p>
+      <p class="n-desc">Assign cashier and staff accounts to specific branch locations and roles.</p>
       <a routerLink="/store/users" class="btn btn-secondary btn-sm">Manage Users →</a>
     </div>
 
-    <div class="card nav-card" *ngIf="permissionService.hasPermission('ROLE_VIEW')">
+    <div class="card nav-card">
       <div class="nav-card-head">
         <span class="n-icon">🛡️</span>
         <h4>Dynamic Role Engine</h4>
       </div>
-      <p class="n-desc">Define custom roles (e.g. Cashier, Floor Staff) and map granular module permissions.</p>
+      <p class="n-desc">Define custom roles and map granular module permissions tailored to branch needs.</p>
       <a routerLink="/store/roles" class="btn btn-secondary btn-sm">Configure Roles →</a>
     </div>
   </div>

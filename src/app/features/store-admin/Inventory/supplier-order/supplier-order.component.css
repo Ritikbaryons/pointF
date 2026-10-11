@@ -1,0 +1,30 @@
+.page-content {
+  padding: 1.5rem 0;
+}
+.page-card {
+  background: #1e293b;
+  border: 1px solid #334155;
+  border-radius: 12px;
+  padding: 2.5rem;
+  color: #f8fafc;
+}
+.page-badge {
+  display: inline-block;
+  background: rgba(168, 85, 247, 0.15);
+  color: #c084fc;
+  font-size: 0.8rem;
+  font-weight: 700;
+  padding: 4px 10px;
+  border-radius: 6px;
+  margin-bottom: 1rem;
+}
+h1 {
+  font-size: 1.75rem;
+  font-weight: 700;
+  margin-bottom: 0.5rem;
+  color: #f8fafc;
+}
+.desc {
+  color: #94a3b8;
+  font-size: 0.95rem;
+}

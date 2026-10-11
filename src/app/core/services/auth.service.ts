@@ -3,7 +3,6 @@ import { HttpClient } from '@angular/common/http';
 import { Router } from '@angular/router';
 import { Observable, tap } from 'rxjs';
 import { environment } from '../../../environments/environment';
-import { API_ENDPOINTS } from './service_api';
 import { ApiResponse, LoginResponse, User, Role, Branch } from '../models/auth.model';
 
 @Injectable({
@@ -16,6 +15,7 @@ export class AuthService {
   private readonly PERMS_KEY = 'grocery_pos_perms';
   private readonly MODULES_KEY = 'grocery_pos_modules';
   private readonly BRANCHES_KEY = 'grocery_pos_branches';
+  private readonly METRICS_KEY = 'grocery_pos_metrics';
 
   currentUser = signal<User | null>(this.getStoredUser());
   token = signal<string | null>(localStorage.getItem(this.TOKEN_KEY));
@@ -23,6 +23,7 @@ export class AuthService {
   userPermissions = signal<string[]>(this.getStoredPermissions());
   activeModules = signal<string[]>(this.getStoredModules());
   userBranches = signal<Branch[]>(this.getStoredBranches());
+  metrics = signal<{ branchCount: number; userCount: number; roleCount: number }>(this.getStoredMetrics());
 
   isAuthenticated = computed(() => !!this.token() && !!this.currentUser());
   isSuperAdmin = computed(() => this.currentUser()?.isSuperAdmin === true);
@@ -30,7 +31,7 @@ export class AuthService {
   constructor(private http: HttpClient, private router: Router) {}
 
   login(credentials: { email: string; password: string }): Observable<ApiResponse<LoginResponse>> {
-    return this.http.post<ApiResponse<LoginResponse>>(API_ENDPOINTS.AUTH.LOGIN, credentials).pipe(
+    return this.http.post<ApiResponse<LoginResponse>>(`${environment.apiUrl}/auth/login`, credentials).pipe(
       tap((res) => {
         if (res.success && res.data) {
           this.setSession(res.data);
@@ -46,6 +47,9 @@ export class AuthService {
     localStorage.removeItem(this.PERMS_KEY);
     localStorage.removeItem(this.MODULES_KEY);
     localStorage.removeItem(this.BRANCHES_KEY);
+    localStorage.removeItem(this.METRICS_KEY);
+    localStorage.removeItem('grocery_pos_context_store_id');
+    localStorage.removeItem('grocery_pos_context_branch_id');
 
     this.token.set(null);
     this.currentUser.set(null);
@@ -53,12 +57,13 @@ export class AuthService {
     this.userPermissions.set([]);
     this.activeModules.set([]);
     this.userBranches.set([]);
+    this.metrics.set({ branchCount: 0, userCount: 0, roleCount: 0 });
 
     this.router.navigate(['/login']);
   }
 
   fetchProfile(): Observable<ApiResponse<any>> {
-    return this.http.get<ApiResponse<any>>(API_ENDPOINTS.AUTH.GET_ME).pipe(
+    return this.http.get<ApiResponse<any>>(`${environment.apiUrl}/auth/me`).pipe(
       tap((res) => {
         if (res.success && res.data) {
           this.currentUser.set(res.data.user);
@@ -72,6 +77,10 @@ export class AuthService {
           localStorage.setItem(this.PERMS_KEY, JSON.stringify(res.data.permissions || []));
           localStorage.setItem(this.MODULES_KEY, JSON.stringify(res.data.activeModules || []));
           localStorage.setItem(this.BRANCHES_KEY, JSON.stringify(res.data.branches || []));
+          if (res.data.metrics) {
+            this.metrics.set(res.data.metrics);
+            localStorage.setItem(this.METRICS_KEY, JSON.stringify(res.data.metrics));
+          }
         }
       })
     );
@@ -84,6 +93,10 @@ export class AuthService {
     localStorage.setItem(this.PERMS_KEY, JSON.stringify(data.permissions || []));
     localStorage.setItem(this.MODULES_KEY, JSON.stringify(data.activeModules || []));
     localStorage.setItem(this.BRANCHES_KEY, JSON.stringify(data.branches || []));
+    if ((data as any).metrics) {
+      this.metrics.set((data as any).metrics);
+      localStorage.setItem(this.METRICS_KEY, JSON.stringify((data as any).metrics));
+    }
 
     this.token.set(data.token);
     this.currentUser.set(data.user);
@@ -91,6 +104,15 @@ export class AuthService {
     this.userPermissions.set(data.permissions || []);
     this.activeModules.set(data.activeModules || []);
     this.userBranches.set(data.branches || []);
+  }
+
+  private getStoredMetrics(): { branchCount: number; userCount: number; roleCount: number } {
+    const raw = localStorage.getItem(this.METRICS_KEY);
+    try {
+      return raw ? JSON.parse(raw) : { branchCount: 0, userCount: 0, roleCount: 0 };
+    } catch {
+      return { branchCount: 0, userCount: 0, roleCount: 0 };
+    }
   }
 
   private getStoredUser(): User | null {

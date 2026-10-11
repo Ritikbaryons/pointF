@@ -3,11 +3,9 @@ import { CommonModule } from '@angular/common';
 import { RouterLink } from '@angular/router';
 import { AuthService } from '../../../core/services/auth.service';
 import { PermissionService } from '../../../core/services/permission.service';
-import { BranchService } from '../../../core/services/branch.service';
-import { UserService } from '../../../core/services/user.service';
-import { RoleService } from '../../../core/services/role.service';
+import { ApiService } from '../../../core/services/api.services';
 import { StoreContextService } from '../../../core/services/store-context.service';
-import { StoreModule } from '../../../core/models/auth.model';
+import { StoreModule, Branch } from '../../../core/models/auth.model';
 
 @Component({
   selector: 'app-store-dashboard',
@@ -18,26 +16,24 @@ import { StoreModule } from '../../../core/models/auth.model';
 })
 export class StoreDashboardComponent implements OnInit {
   allCatalogModules: StoreModule[] = [];
-  branchCount = 0;
-  userCount = 0;
-  roleCount = 0;
 
   constructor(
     public authService: AuthService,
     public permissionService: PermissionService,
-    private branchService: BranchService,
-    private userService: UserService,
-    private roleService: RoleService,
+    private apiService: ApiService,
     public storeContext: StoreContextService
   ) {
-    // Auto-reload metrics when Super Admin selects different store
+    // Only Super Admin switching stores needs dynamic reload from API
     effect(() => {
       const storeId = this.storeContext.selectedStoreId();
-      this.loadDashboardData();
+      if (this.authService.isSuperAdmin() && storeId) {
+        this.loadDashboardDataForSuperAdmin(storeId);
+      }
     });
   }
 
   ngOnInit(): void {
+    // Fetch catalog modules once (cached by PermissionService)
     this.permissionService.getAllStoreModules().subscribe({
       next: (res) => {
         if (res.success) {
@@ -46,21 +42,40 @@ export class StoreDashboardComponent implements OnInit {
       },
     });
 
-    this.loadDashboardData();
+    // Ensure active branch modules are loaded for current active branch
+    const activeId = this.activeBranch?.id;
+    if (activeId) {
+      this.storeContext.loadBranchModules(activeId);
+    }
   }
 
-  loadDashboardData(): void {
-    this.branchService.getAllBranches().subscribe({
-      next: (res) => { if (res.success) this.branchCount = res.data.length; },
-    });
+  get accessibleBranches(): Branch[] {
+    const ctxBranches = this.storeContext.branches();
+    if (ctxBranches && ctxBranches.length > 0) return ctxBranches;
+    return this.authService.userBranches() || [];
+  }
 
-    this.userService.getAllUsers().subscribe({
-      next: (res) => { if (res.success) this.userCount = res.data.length; },
-    });
+  get activeBranch(): Branch | null {
+    const sel = this.storeContext.selectedBranch();
+    if (sel) return sel;
+    const branches = this.accessibleBranches;
+    return branches.length > 0 ? branches[0] : null;
+  }
 
-    this.roleService.getAllRoles().subscribe({
-      next: (res) => { if (res.success) this.roleCount = res.data.length; },
-    });
+  get branchStaffCount(): number {
+    return this.activeBranch?.user_count || 1;
+  }
+
+  get branchActiveModuleCount(): number {
+    return this.storeContext.activeBranchModules().length;
+  }
+
+  switchBranch(branchId: number): void {
+    this.storeContext.selectBranch(branchId);
+  }
+
+  private loadDashboardDataForSuperAdmin(storeId: number): void {
+    this.apiService.getAllBranches(storeId).subscribe();
   }
 
   get userRole(): string {
@@ -69,6 +84,6 @@ export class StoreDashboardComponent implements OnInit {
   }
 
   isModuleEnabled(moduleCode: string): boolean {
-    return this.authService.activeModules().includes(moduleCode);
+    return this.storeContext.hasBranchModule(moduleCode);
   }
 }

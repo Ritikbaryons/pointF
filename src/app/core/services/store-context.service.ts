@@ -2,7 +2,7 @@ import { Injectable, signal, computed } from '@angular/core';
 import { HttpClient, HttpParams } from '@angular/common/http';
 import { Store } from '../models/store.model';
 import { Branch, ApiResponse } from '../models/auth.model';
-import { API_ENDPOINTS } from './service_api';
+import { environment } from '../../../environments/environment';
 
 @Injectable({
   providedIn: 'root',
@@ -16,8 +16,10 @@ export class StoreContextService {
   branches = signal<Branch[]>([]);
   selectedStoreId = signal<number | null>(this.getInitialStoreId());
   selectedBranchId = signal<number | null>(this.getInitialBranchId());
+  activeBranchModules = signal<string[]>([]);
   isLoadingStores = signal<boolean>(false);
   isLoadingBranches = signal<boolean>(false);
+  isLoadingModules = signal<boolean>(false);
 
   // Computed
   selectedStore = computed(() => {
@@ -44,14 +46,27 @@ export class StoreContextService {
     return raw ? parseInt(raw, 10) : null;
   }
 
+  initForStoreUser(userBranches: Branch[]): void {
+    this.branches.set(userBranches || []);
+    if (!userBranches || userBranches.length === 0) return;
+
+    let branchId = this.selectedBranchId();
+    // Validate if saved branch is in user's accessible branches
+    if (!branchId || !userBranches.some((b) => b.id === branchId)) {
+      branchId = userBranches[0].id;
+      this.selectBranch(branchId);
+    } else {
+      this.loadBranchModules(branchId);
+    }
+  }
+
   loadStores(): void {
     this.isLoadingStores.set(true);
-    this.http.get<ApiResponse<Store[]>>(API_ENDPOINTS.STORES.BASE).subscribe({
+    this.http.get<ApiResponse<Store[]>>(`${environment.apiUrl}/stores`).subscribe({
       next: (res) => {
         this.stores.set(res.data || []);
         this.isLoadingStores.set(false);
 
-        // If previously saved store exists, load its branches
         const currentStoreId = this.selectedStoreId();
         if (currentStoreId && this.stores().some((s) => s.id === currentStoreId)) {
           this.loadBranchesForStore(currentStoreId);
@@ -68,6 +83,7 @@ export class StoreContextService {
   selectStore(storeId: number | null): void {
     this.selectedStoreId.set(storeId);
     this.selectedBranchId.set(null);
+    this.activeBranchModules.set([]);
     localStorage.removeItem(this.STORAGE_BRANCH_KEY);
 
     if (storeId) {
@@ -83,15 +99,49 @@ export class StoreContextService {
     this.selectedBranchId.set(branchId);
     if (branchId) {
       localStorage.setItem(this.STORAGE_BRANCH_KEY, branchId.toString());
+      this.loadBranchModules(branchId);
     } else {
       localStorage.removeItem(this.STORAGE_BRANCH_KEY);
+      this.activeBranchModules.set([]);
     }
+  }
+
+  private branchModulesCache = new Map<number, string[]>();
+
+  loadBranchModules(branchId: number): void {
+    if (this.branchModulesCache.has(branchId)) {
+      this.activeBranchModules.set(this.branchModulesCache.get(branchId)!);
+      return;
+    }
+
+    this.isLoadingModules.set(true);
+    this.http.get<ApiResponse<any[]>>(`${environment.apiUrl}/branches/${branchId}/modules`).subscribe({
+      next: (res) => {
+        if (res.success && res.data) {
+          const enabledCodes = res.data
+            .filter((m) => m.is_enabled === true)
+            .map((m) => m.module_code);
+          this.branchModulesCache.set(branchId, enabledCodes);
+          this.activeBranchModules.set(enabledCodes);
+        }
+        this.isLoadingModules.set(false);
+      },
+      error: () => {
+        this.isLoadingModules.set(false);
+      },
+    });
+  }
+
+  hasBranchModule(_moduleCode?: string): boolean {
+    return true;
   }
 
   clearContext(): void {
     this.selectedStoreId.set(null);
     this.selectedBranchId.set(null);
     this.branches.set([]);
+    this.activeBranchModules.set([]);
+    this.branchModulesCache.clear();
     localStorage.removeItem(this.STORAGE_STORE_KEY);
     localStorage.removeItem(this.STORAGE_BRANCH_KEY);
   }
@@ -99,15 +149,18 @@ export class StoreContextService {
   private loadBranchesForStore(storeId: number): void {
     this.isLoadingBranches.set(true);
     const params = new HttpParams().set('storeId', storeId.toString());
-    this.http.get<ApiResponse<Branch[]>>(API_ENDPOINTS.BRANCHES.BASE, { params }).subscribe({
+    this.http.get<ApiResponse<Branch[]>>(`${environment.apiUrl}/branches`, { params }).subscribe({
       next: (res) => {
         const branches = res.data || [];
         this.branches.set(branches);
         this.isLoadingBranches.set(false);
 
-        // Validate saved branch exists in branches
         const savedBranchId = this.selectedBranchId();
-        if (savedBranchId && !branches.some((b) => b.id === savedBranchId)) {
+        if (savedBranchId && branches.some((b) => b.id === savedBranchId)) {
+          this.loadBranchModules(savedBranchId);
+        } else if (branches.length > 0) {
+          this.selectBranch(branches[0].id);
+        } else {
           this.selectBranch(null);
         }
       },

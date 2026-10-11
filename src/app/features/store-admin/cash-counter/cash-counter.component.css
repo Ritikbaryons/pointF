@@ -1,0 +1,4 @@
+.cash-counter-container {
+  padding: 1.5rem;
+  min-height: calc(100vh - 120px);
+}

@@ -28,12 +28,43 @@
   grid-template-columns: 1fr 1fr;
   gap: 16px;
 }
+.modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(10, 15, 29, 0.82);
+  backdrop-filter: blur(8px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+  padding: 1.25rem;
+}
+.modal-card {
+  background: var(--bg-card);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-lg);
+  width: 100%;
+  max-width: 580px;
+  max-height: 88vh;
+  display: flex;
+  flex-direction: column;
+  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.65);
+  overflow: hidden;
+}
+.modal-card form {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+}
 .modal-header {
-  padding: 20px 24px;
+  padding: 18px 24px;
   border-bottom: 1px solid var(--border-color);
   display: flex;
   align-items: center;
   justify-content: space-between;
+  flex-shrink: 0;
 }
 .btn-close {
   background: transparent;
@@ -42,15 +73,23 @@
   font-size: 1.2rem;
   cursor: pointer;
 }
+.btn-close:hover {
+  color: var(--text-main);
+}
 .modal-body {
-  padding: 24px;
+  padding: 20px 24px;
+  overflow-y: auto;
+  flex: 1;
+  min-height: 0;
 }
 .modal-footer {
-  padding: 16px 24px;
+  padding: 14px 24px;
   border-top: 1px solid var(--border-color);
   display: flex;
   justify-content: flex-end;
   gap: 12px;
+  background: rgba(13, 19, 34, 0.95);
+  flex-shrink: 0;
 }
 .alert-box {
   margin: 16px 24px 0 24px;
@@ -227,4 +266,83 @@
   background: rgba(16, 185, 129, 0.15);
   color: #34d399;
   border-color: rgba(16, 185, 129, 0.35);
+}
+
+/* Branch Timing & Logo Upload */
+.time-input-wrap {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+.time-input-wrap input {
+  padding-right: 36px;
+}
+.time-icon {
+  position: absolute;
+  right: 12px;
+  pointer-events: none;
+  font-size: 14px;
+}
+.branch-logo-upload-wrap {
+  border: 2px dashed var(--border-color);
+  background: var(--bg-card-hover);
+  border-radius: 8px;
+  padding: 16px;
+  cursor: pointer;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  transition: all 0.2s ease;
+}
+.branch-logo-upload-wrap:hover {
+  border-color: var(--primary);
+  background: rgba(16, 185, 129, 0.05);
+}
+.upload-prompt {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  color: var(--text-muted);
+  font-size: 0.875rem;
+}
+.upload-icon {
+  font-size: 20px;
+}
+.logo-preview-box {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+.branch-logo-preview {
+  width: 48px;
+  height: 48px;
+  border-radius: 8px;
+  object-fit: cover;
+  border: 1px solid var(--primary);
+}
+.logo-name-badge {
+  font-size: 0.8rem;
+  color: #34d399;
+  font-weight: 600;
+}
+.btn-edit-action {
+  background: rgba(16, 185, 129, 0.12);
+  color: #34d399;
+  border: 1px solid rgba(16, 185, 129, 0.35);
+  font-weight: 600;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  border-radius: 6px;
+  padding: 4px 10px;
+  font-size: 0.8rem;
+  transition: all 0.2s;
+  cursor: pointer;
+}
+.btn-edit-action:hover {
+  background: rgba(16, 185, 129, 0.25);
+  border-color: #34d399;
+  color: #ffffff;
 }

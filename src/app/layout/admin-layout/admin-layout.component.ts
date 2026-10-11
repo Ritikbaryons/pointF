@@ -14,16 +14,38 @@ import { StoreContextService } from '../../core/services/store-context.service';
   styleUrl: './admin-layout.component.css',
 })
 export class AdminLayoutComponent implements OnInit {
+  settingsOpen = true;
+  inventoryOpen = true;
+
   constructor(
     public authService: AuthService,
     public permissionService: PermissionService,
     public storeContext: StoreContextService,
-    private router: Router
+    public router: Router
   ) {}
+
+  toggleSettings(): void {
+    this.settingsOpen = !this.settingsOpen;
+  }
+
+  isSettingsActive(): boolean {
+    return this.router.url.includes('/store/settings');
+  }
+
+  toggleInventory(): void {
+    this.inventoryOpen = !this.inventoryOpen;
+  }
+
+  isInventoryActive(): boolean {
+    return this.router.url.includes('/store/inventory');
+  }
 
   ngOnInit(): void {
     if (this.authService.isSuperAdmin()) {
       this.storeContext.loadStores();
+    } else {
+      const branches = this.authService.userBranches();
+      this.storeContext.initForStoreUser(branches);
     }
   }
 

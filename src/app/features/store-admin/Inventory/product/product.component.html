@@ -1,0 +1,654 @@
+<div class="product-page-container">
+  <!-- Toast Messages -->
+  <div class="toast-alert toast-success" *ngIf="successMessage()">
+    <span class="toast-icon">✓</span>
+    <span>{{ successMessage() }}</span>
+  </div>
+
+  <div class="toast-alert toast-danger" *ngIf="errorMessage() && !isModalOpen()">
+    <span class="toast-icon">⚠️</span>
+    <span>{{ errorMessage() }}</span>
+  </div>
+
+  <!-- Top Action & Search Bar -->
+  <div class="top-action-bar">
+    <div class="search-input-wrap">
+      <span class="search-icon">🔍</span>
+      <input
+        type="text"
+        class="search-input"
+        placeholder="Search category by name, code or group..."
+        [(ngModel)]="searchTerm"
+        (input)="applyFilter()"
+      />
+    </div>
+
+    <button class="btn-add-item" (click)="openAddModal()">
+      <span class="btn-icon">+</span> Add Item
+    </button>
+  </div>
+
+  <!-- Data Table Container (Matching Screenshot 3) -->
+  <div class="table-card">
+    <div class="table-responsive">
+      <table class="custom-data-table">
+        <thead>
+          <tr>
+            <th>Category Name <span class="sort-arrows">⇅</span></th>
+            <th>Item Name <span class="sort-arrows">⇅</span></th>
+            <th>Item Type <span class="sort-arrows">⇅</span></th>
+            <th>Item price(MSP) <span class="sort-arrows">⇅</span></th>
+            <th>Item Volume <span class="sort-arrows">⇅</span></th>
+            <th>Unit <span class="sort-arrows">⇅</span></th>
+            <th>Barcode</th>
+            <th>Status <span class="sort-arrows">⇅</span></th>
+            <th>Action <span class="sort-arrows">⇅</span></th>
+          </tr>
+        </thead>
+
+        <tbody>
+          <!-- Loading State -->
+          <tr *ngIf="loading()">
+            <td colspan="9" class="state-cell">
+              <div class="spinner-wrap">
+                <div class="spinner"></div>
+                <span>Loading products...</span>
+              </div>
+            </td>
+          </tr>
+
+          <!-- Empty State -->
+          <tr *ngIf="!loading() && paginatedProducts.length === 0">
+            <td colspan="9" class="state-cell empty-state">
+              <div class="empty-icon-wrap">
+                <span class="empty-tag-icon">🏷️</span>
+              </div>
+              <div class="empty-title">No products found</div>
+              <div class="empty-subtitle">Click "+ Add Item" to register your first product in this category.</div>
+            </td>
+          </tr>
+
+          <!-- Product Rows -->
+          <tr *ngFor="let product of paginatedProducts" class="data-row">
+            <!-- Category Name -->
+            <td class="font-medium text-slate-800">
+              {{ product.category_name || product.display_category_name || '-' }}
+            </td>
+
+            <!-- Item Name -->
+            <td class="font-semibold text-slate-900">
+              {{ product.item_name }}
+              <span class="loose-badge" *ngIf="product.is_loose_item">Loose</span>
+            </td>
+
+            <!-- Item Type -->
+            <td>
+              <span class="type-pill" [attr.data-type]="product.item_type || 'Veg'">
+                {{ product.item_type || 'Veg' }}
+              </span>
+            </td>
+
+            <!-- MSP Price -->
+            <td class="font-semibold text-slate-800">
+              {{ product.msp }}
+            </td>
+
+            <!-- Volume -->
+            <td>
+              {{ product.volume || '-' }}
+            </td>
+
+            <!-- Unit -->
+            <td class="font-medium">
+              {{ product.unit }}
+            </td>
+
+            <!-- Barcode Link -->
+            <td>
+              <button class="barcode-link-btn" (click)="openBarcodeModal(product, $event)">
+                Print BarCode
+              </button>
+            </td>
+
+            <!-- Status Toggle -->
+            <td>
+              <label class="switch-toggle" title="Toggle active status">
+                <input
+                  type="checkbox"
+                  [checked]="product.status === 'ACTIVE'"
+                  (change)="toggleStatus(product, $event)"
+                />
+                <span class="switch-slider"></span>
+              </label>
+            </td>
+
+            <!-- Actions -->
+            <td class="action-cell">
+              <div class="actions-group">
+                <button
+                  class="action-btn edit-btn"
+                  (click)="openEditModal(product)"
+                  title="Edit Item"
+                >
+                  ✏️
+                </button>
+                <button
+                  class="action-btn view-btn"
+                  (click)="openViewModal(product)"
+                  title="View Item"
+                >
+                  👁️
+                </button>
+                <button
+                  class="action-btn delete-btn"
+                  (click)="openDeleteModal(product, $event)"
+                  title="Delete Item"
+                >
+                  🗑️
+                </button>
+              </div>
+            </td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <!-- Table Footer / Pagination -->
+    <div class="table-pagination-footer" *ngIf="!loading() && filteredProducts().length > 0">
+      <div class="entries-info">
+        Showing {{ startEntry }} to {{ endEntry }} of {{ filteredProducts().length }} entries
+      </div>
+
+      <div class="pagination-controls">
+        <button
+          class="page-nav-btn"
+          [disabled]="currentPage === 1"
+          (click)="prevPage()"
+        >
+          Previous
+        </button>
+
+        <button
+          *ngFor="let page of [].constructor(totalPages); let p = index"
+          class="page-num-btn"
+          [class.active]="currentPage === p + 1"
+          (click)="goToPage(p + 1)"
+        >
+          {{ p + 1 }}
+        </button>
+
+        <button
+          class="page-nav-btn"
+          [disabled]="currentPage === totalPages"
+          (click)="nextPage()"
+        >
+          Next
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ============================================================== -->
+  <!-- ADD / EDIT ITEM MODAL (Matching Screenshots 1, 2, 5)           -->
+  <!-- ============================================================== -->
+  <div class="modal-backdrop" *ngIf="isModalOpen()" (click)="closeModal()">
+    <div class="modal-dialog product-modal-dialog" (click)="$event.stopPropagation()">
+      <!-- Modal Header -->
+      <div class="modal-header">
+        <h3 class="modal-title">
+          {{ isViewOnly() ? 'View Item' : (isEditMode() ? 'Edit Item' : 'Add Item') }}
+        </h3>
+        <button class="btn-close-modal" (click)="closeModal()" aria-label="Close">✕</button>
+      </div>
+
+      <!-- Error inside modal -->
+      <div *ngIf="errorMessage()" class="modal-alert alert-danger">
+        <span>⚠️</span> {{ errorMessage() }}
+      </div>
+
+      <!-- Form Body -->
+      <form [formGroup]="productForm" (ngSubmit)="onSubmit()" class="product-modal-form">
+        <!-- Row 1: Select Supplier & Select Category -->
+        <div class="form-row two-cols">
+          <!-- Select Supplier Dropdown -->
+          <div class="form-field">
+            <label class="form-label">
+              Select Supplier <span class="required-star">*</span>
+            </label>
+            <div class="searchable-dropdown-wrap">
+              <div class="dropdown-trigger-input" (click)="toggleSupplierDropdown()">
+                <span class="selected-text" *ngIf="selectedSupplierName()">
+                  {{ selectedSupplierName() }}
+                </span>
+                <span class="placeholder-text" *ngIf="!selectedSupplierName()">
+                  Select Supplier
+                </span>
+
+                <div class="trigger-actions">
+                  <button
+                    type="button"
+                    class="btn-clear-selection"
+                    *ngIf="selectedSupplierName() && !isViewOnly()"
+                    (click)="clearSupplier($event)"
+                  >
+                    ✕
+                  </button>
+                  <span class="dropdown-arrow">▾</span>
+                </div>
+              </div>
+
+              <!-- Supplier Suggestions Menu -->
+              <div class="custom-dropdown-panel" *ngIf="supplierDropdownOpen()">
+                <div class="dropdown-search-box">
+                  <input
+                    type="text"
+                    placeholder="Search supplier..."
+                    [(ngModel)]="supplierSearchTerm"
+                    [ngModelOptions]="{standalone: true}"
+                    (click)="$event.stopPropagation()"
+                  />
+                </div>
+                <div class="dropdown-options-list">
+                  <div
+                    class="dropdown-option-item"
+                    *ngFor="let s of filteredSuppliers"
+                    (click)="selectSupplier(s)"
+                  >
+                    <span class="option-name">{{ s.supplier_name }}</span>
+                    <span class="option-sub">{{ s.contact_number }}</span>
+                  </div>
+                  <div class="dropdown-empty-item" *ngIf="filteredSuppliers.length === 0">
+                    No suppliers found
+                  </div>
+                </div>
+              </div>
+            </div>
+            <div class="field-error" *ngIf="productForm.get('supplierId')?.touched && productForm.get('supplierId')?.invalid">
+              Supplier is required.
+            </div>
+          </div>
+
+          <!-- Select Category Dropdown -->
+          <div class="form-field">
+            <label class="form-label">
+              <span class="required-star">*</span> Select Category:
+            </label>
+            <div class="searchable-dropdown-wrap">
+              <div class="dropdown-trigger-input" (click)="toggleCategoryDropdown()">
+                <span class="selected-text" *ngIf="selectedCategoryName()">
+                  {{ selectedCategoryName() }}
+                </span>
+                <span class="placeholder-text" *ngIf="!selectedCategoryName()">
+                  Select Category
+                </span>
+
+                <div class="trigger-actions">
+                  <button
+                    type="button"
+                    class="btn-clear-selection"
+                    *ngIf="selectedCategoryName() && !isViewOnly()"
+                    (click)="clearCategory($event)"
+                  >
+                    ✕
+                  </button>
+                  <span class="dropdown-arrow">▾</span>
+                </div>
+              </div>
+
+              <!-- Category Suggestions Menu -->
+              <div class="custom-dropdown-panel" *ngIf="categoryDropdownOpen()">
+                <div class="dropdown-search-box">
+                  <input
+                    type="text"
+                    placeholder="Search category..."
+                    [(ngModel)]="categorySearchTerm"
+                    [ngModelOptions]="{standalone: true}"
+                    (click)="$event.stopPropagation()"
+                  />
+                </div>
+                <div class="dropdown-options-list">
+                  <div
+                    class="dropdown-option-item"
+                    *ngFor="let c of filteredCategories"
+                    (click)="selectCategory(c)"
+                  >
+                    <span class="option-name">{{ c.category_name }}</span>
+                    <span class="option-sub" *ngIf="c.group_name">({{ c.group_name }})</span>
+                  </div>
+                  <div class="dropdown-empty-item" *ngIf="filteredCategories.length === 0">
+                    No categories found
+                  </div>
+                </div>
+              </div>
+            </div>
+            <div class="field-error" *ngIf="productForm.get('categoryId')?.touched && productForm.get('categoryId')?.invalid">
+              Category is required.
+            </div>
+          </div>
+        </div>
+
+        <!-- Row 2: Item Name & Select Item Type -->
+        <div class="form-row two-cols mt-3">
+          <div class="form-field">
+            <label class="form-label">
+              <span class="required-star">*</span> Item Name:
+            </label>
+            <input
+              type="text"
+              class="form-control"
+              placeholder="Enter Item Name"
+              formControlName="itemName"
+              [readonly]="isViewOnly()"
+            />
+            <div class="field-error" *ngIf="productForm.get('itemName')?.touched && productForm.get('itemName')?.invalid">
+              Item name is required (min 2 characters).
+            </div>
+          </div>
+
+          <!-- Select Item Type (Checkboxes / Radio styling) -->
+          <div class="form-field">
+            <label class="form-label">
+              <span class="required-star">*</span> Select Item Type
+            </label>
+            <div class="item-types-list">
+              <label
+                class="type-checkbox-label"
+                *ngFor="let type of itemTypes"
+              >
+                <input
+                  type="radio"
+                  name="itemTypeOption"
+                  [value]="type"
+                  [checked]="productForm.get('itemType')?.value === type"
+                  (change)="selectItemType(type)"
+                  [disabled]="isViewOnly()"
+                />
+                <span class="checkbox-custom"></span>
+                <span class="checkbox-text">{{ type }}</span>
+              </label>
+            </div>
+          </div>
+        </div>
+
+        <!-- Row 3: MRP & Item Amount(MSP) -->
+        <div class="form-row two-cols mt-3">
+          <div class="form-field">
+            <label class="form-label">
+              <span class="required-star">*</span> MRP
+            </label>
+            <input
+              type="number"
+              class="form-control"
+              placeholder="Enter Item MRP"
+              formControlName="mrp"
+              [readonly]="isViewOnly()"
+            />
+            <div class="field-error" *ngIf="productForm.get('mrp')?.touched && productForm.get('mrp')?.invalid">
+              Valid MRP is required.
+            </div>
+          </div>
+
+          <div class="form-field">
+            <label class="form-label">
+              <span class="required-star">*</span> Item Amount(MSP)
+            </label>
+            <input
+              type="number"
+              class="form-control"
+              placeholder="Enter Item Amount"
+              formControlName="msp"
+              [readonly]="isViewOnly()"
+            />
+            <div class="field-error" *ngIf="productForm.get('msp')?.touched && productForm.get('msp')?.invalid">
+              Valid Selling Price (MSP) is required.
+            </div>
+          </div>
+        </div>
+
+        <!-- Row 4: Unit & Volume -->
+        <div class="form-row two-cols mt-3">
+          <div class="form-field">
+            <label class="form-label">
+              Unit <span class="required-star">*</span>
+            </label>
+            <input
+              type="text"
+              class="form-control"
+              placeholder="Enter Unit (e.g. L, kg, pcs)"
+              formControlName="unit"
+              [readonly]="isViewOnly()"
+            />
+          </div>
+
+          <div class="form-field">
+            <label class="form-label">
+              volume <span class="required-star" *ngIf="productForm.get('isLooseItem')?.value">*</span>
+            </label>
+            <input
+              type="number"
+              class="form-control"
+              placeholder="Enter Value"
+              formControlName="volume"
+              [readonly]="isViewOnly()"
+            />
+          </div>
+        </div>
+
+        <!-- Row 5: Is Loose Item Toggle -->
+        <div class="form-field mt-3">
+          <label class="form-label mb-1">Is Loose Item</label>
+          <div class="loose-item-toggle-wrap">
+            <label class="switch-toggle lg-toggle">
+              <input
+                type="checkbox"
+                formControlName="isLooseItem"
+                [disabled]="isViewOnly()"
+              />
+              <span class="switch-slider"></span>
+            </label>
+            <span class="loose-hint-text" *ngIf="productForm.get('isLooseItem')?.value">
+              (Sold by fractional weight/volume on scale, e.g. open pulses, grains, fruits)
+            </span>
+            <span class="loose-hint-text text-muted" *ngIf="!productForm.get('isLooseItem')?.value">
+              (Packaged item sold as standard whole units)
+            </span>
+          </div>
+        </div>
+
+        <!-- Row 6: Item Description -->
+        <div class="form-field mt-3">
+          <label class="form-label">Item Description:</label>
+          <textarea
+            class="form-control description-textarea"
+            rows="3"
+            placeholder="Item Description"
+            formControlName="description"
+            [readonly]="isViewOnly()"
+          ></textarea>
+        </div>
+
+        <!-- Row 7: Set item level tax & Upload Cover Image -->
+        <div class="form-row two-cols mt-3 align-start">
+          <div class="form-field">
+            <label class="form-label">Set item level tax (If Applicable)</label>
+            <select class="form-control" formControlName="taxRate" [disabled]="isViewOnly()">
+              <option *ngFor="let opt of taxOptions" [value]="opt.value">
+                {{ opt.label }}
+              </option>
+            </select>
+          </div>
+
+          <!-- Upload Cover Image -->
+          <div class="form-field">
+            <label class="form-label">Upload Cover Image</label>
+            <input
+              type="file"
+              #coverImageInput
+              accept="image/*"
+              class="hidden-file-input"
+              (change)="onCoverImageSelected($event)"
+            />
+
+            <div
+              class="upload-cover-box"
+              (click)="!isViewOnly() && triggerCoverImageInput()"
+              [class.has-preview]="coverImagePreview()"
+            >
+              <ng-container *ngIf="!coverImagePreview()">
+                <span class="upload-icon-blue">📤</span>
+                <span class="upload-label-text">Upload Cover Image</span>
+              </ng-container>
+
+              <div class="preview-wrap" *ngIf="coverImagePreview()">
+                <img [src]="coverImagePreview()" alt="Cover" class="cover-img-preview" />
+                <button
+                  type="button"
+                  class="btn-remove-preview"
+                  *ngIf="!isViewOnly()"
+                  (click)="removeCoverImage($event)"
+                >
+                  ✕
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Row 8: Upload Multiple Item Images -->
+        <div class="form-field mt-3">
+          <label class="form-label">Upload Item Images</label>
+          <input
+            type="file"
+            #multipleImagesInput
+            accept="image/*"
+            multiple
+            class="hidden-file-input"
+            (change)="onMultipleImagesSelected($event)"
+          />
+
+          <div
+            class="upload-multiple-box"
+            (click)="!isViewOnly() && triggerMultipleImagesInput()"
+          >
+            <span class="upload-icon-blue">📤</span>
+            <span class="upload-label-text">Upload Multiple Images</span>
+          </div>
+
+          <!-- Multi-images thumbnail gallery -->
+          <div class="multi-images-preview-row" *ngIf="itemImagesPreview().length > 0">
+            <div class="multi-preview-item" *ngFor="let img of itemImagesPreview(); let idx = index">
+              <img [src]="img" alt="Product Image" />
+              <button
+                type="button"
+                class="btn-remove-thumb"
+                *ngIf="!isViewOnly()"
+                (click)="removeItemImage(idx, $event)"
+              >
+                ✕
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Modal Footer Actions -->
+        <div class="modal-footer-actions mt-4">
+          <button type="button" class="btn-cancel" (click)="closeModal()">
+            Cancel
+          </button>
+          <button
+            type="submit"
+            class="btn-save"
+            *ngIf="!isViewOnly()"
+            [disabled]="submitting()"
+          >
+            {{ submitting() ? 'Saving...' : 'Save' }}
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- ============================================================== -->
+  <!-- BARCODE PRINT MODAL (Matching Screenshot 4)                    -->
+  <!-- ============================================================== -->
+  <div class="modal-backdrop" *ngIf="isBarcodeModalOpen()" (click)="closeBarcodeModal()">
+    <div class="modal-dialog barcode-modal-dialog" (click)="$event.stopPropagation()">
+      <button class="btn-close-modal barcode-close-btn" (click)="closeBarcodeModal()" aria-label="Close">✕</button>
+
+      <!-- Thermal Label Preview Card -->
+      <div class="barcode-preview-card" *ngIf="selectedProductForBarcode() as prod">
+        <div class="label-store-name">
+          {{ storeContext.selectedStore()?.name || prod.store_name || 'DILIP STORE' }}
+        </div>
+        <div class="label-item-name">
+          {{ prod.item_name }}
+        </div>
+
+        <!-- Barcode Representation -->
+        <div class="barcode-graphic-area">
+          <div class="barcode-lines-mock">
+            <span *ngFor="let bar of [4,2,6,1,3,5,2,4,7,1,3,6,2,5,3,4,1,6,3,5,2,4,6,1,4,2,5,3,2,6,1,4,5,2,3,6]"></span>
+          </div>
+          <div class="label-barcode-digits">
+            {{ prod.barcode || '000000029765' }}
+          </div>
+        </div>
+
+        <!-- Footer: Volume & Price -->
+        <div class="label-footer-row">
+          <span class="label-volume">{{ barcodeQuantity }} {{ prod.unit }}</span>
+          <span class="label-price">₹ {{ prod.msp }}</span>
+        </div>
+      </div>
+
+      <!-- Controls Form -->
+      <div class="barcode-controls-box" *ngIf="selectedProductForBarcode() as prod">
+        <div class="form-field">
+          <label class="form-label">Weight/Quantity ({{ prod.unit }}):</label>
+          <input
+            type="number"
+            class="form-control"
+            [(ngModel)]="barcodeQuantity"
+            min="0.01"
+            step="any"
+          />
+        </div>
+
+        <div class="form-field mt-3">
+          <label class="form-label">Number of Copies:</label>
+          <input
+            type="number"
+            class="form-control"
+            [(ngModel)]="barcodeCopies"
+            min="1"
+            step="1"
+          />
+        </div>
+
+        <div class="barcode-action-buttons mt-4">
+          <button class="btn-download-pdf" (click)="downloadBarcodePDF()">
+            <span class="btn-icon">📥</span> Download PDF
+          </button>
+          <button class="btn-print-barcode" (click)="printBarcode()">
+            <span class="btn-icon">🖨️</span> Print Barcode
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Delete Confirmation Modal -->
+  <div class="modal-backdrop" *ngIf="isDeleteModalOpen()" (click)="closeDeleteModal()">
+    <div class="modal-dialog delete-dialog" (click)="$event.stopPropagation()">
+      <div class="delete-icon">⚠️</div>
+      <h3 class="delete-title">Delete Product</h3>
+      <p class="delete-desc">
+        Are you sure you want to delete <strong>{{ deletingProduct()?.item_name }}</strong>? This action cannot be undone.
+      </p>
+      <div class="delete-actions">
+        <button class="btn-cancel" (click)="closeDeleteModal()">Cancel</button>
+        <button class="btn-confirm-delete" (click)="confirmDelete()">Delete</button>
+      </div>
+    </div>
+  </div>
+</div>

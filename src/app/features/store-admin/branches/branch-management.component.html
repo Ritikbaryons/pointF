@@ -5,9 +5,7 @@
       <p class="subtitle">Physical retail stores and billing counter branches</p>
     </div>
     <div>
-      <button *hasPermission="'BRANCH_CREATE'" (click)="openCreateModal()" class="btn btn-primary">
-        <span>➕</span> Create Branch
-      </button>
+      <span class="info-tag">🏢 Branch creation & module licensing managed by Super Admin</span>
     </div>
   </div>
 
@@ -57,8 +55,12 @@
             </td>
             <td style="text-align: right;">
               <div class="btn-group-actions">
-                <button (click)="openModuleModal(b)" class="btn btn-sm btn-outline-info" title="Configure Branch Modules">
-                  ⚙️ Modules
+                <button
+                  class="btn btn-sm btn-edit-action"
+                  (click)="openEditModal(b)"
+                  title="Edit Branch Details"
+                >
+                  <span>✏️</span> Edit
                 </button>
                 <button *hasPermission="'BRANCH_STATUS_UPDATE'"
                         (click)="toggleStatus(b)"
@@ -87,7 +89,7 @@
   <div class="modal-overlay" *ngIf="showModal">
     <div class="modal-card">
       <div class="modal-header">
-        <h3>Create New Branch</h3>
+        <h3>{{ isEditMode ? 'Edit Branch' : 'Create New Branch' }}</h3>
         <button (click)="closeModal()" class="btn-close">✕</button>
       </div>
 
@@ -136,8 +138,42 @@
             </div>
           </div>
 
-          <!-- Branch Modules Selection -->
-          <div class="form-group mt-4">
+          <!-- Opening Time & Closing Time -->
+          <div class="form-row">
+            <div class="form-group">
+              <label class="form-label">Opening Time <span class="required">*</span></label>
+              <div class="time-input-wrap">
+                <input type="time" formControlName="openingTime" class="form-control" />
+                <span class="time-icon">🕒</span>
+              </div>
+            </div>
+            <div class="form-group">
+              <label class="form-label">Closing Time <span class="required">*</span></label>
+              <div class="time-input-wrap">
+                <input type="time" formControlName="closingTime" class="form-control" />
+                <span class="time-icon">🕒</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- Branch Logo Upload -->
+          <div class="form-group">
+            <label class="form-label">Branch Logo</label>
+            <div class="branch-logo-upload-wrap" (click)="logoFileInput.click()">
+              <input #logoFileInput type="file" hidden (change)="onBranchLogoSelect($event)" accept="image/*" />
+              <div class="upload-prompt" *ngIf="!branchForm.get('logoUrl')?.value">
+                <span class="upload-icon">🖼️</span>
+                <span>{{ uploadingBranchLogo ? 'Uploading logo...' : 'Click to upload branch logo (PNG, JPG)' }}</span>
+              </div>
+              <div class="logo-preview-box" *ngIf="branchForm.get('logoUrl')?.value">
+                <img [src]="branchForm.get('logoUrl')?.value" alt="Branch Logo" class="branch-logo-preview" />
+                <span class="logo-name-badge">✅ {{ branchLogoFileName || 'Branch Logo Uploaded' }}</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- Branch Modules Selection (Only on Create Branch) -->
+          <div class="form-group mt-4" *ngIf="!isEditMode">
             <label class="form-label font-bold">Licensed Modules for this Branch</label>
             <p class="text-xs text-muted mb-2">Select which SaaS modules this specific branch is licensed to use</p>
             <div class="branch-modules-selector-grid">
@@ -157,7 +193,7 @@
         <div class="modal-footer">
           <button type="button" (click)="closeModal()" class="btn btn-secondary">Cancel</button>
           <button type="submit" class="btn btn-primary" [disabled]="loading">
-            <span>{{ loading ? 'Creating...' : 'Create Branch' }}</span>
+            <span>{{ loading ? 'Saving...' : (isEditMode ? 'Save Changes' : 'Create Branch') }}</span>
           </button>
         </div>
       </form>

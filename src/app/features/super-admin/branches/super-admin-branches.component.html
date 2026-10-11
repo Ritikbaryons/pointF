@@ -2,8 +2,11 @@
   <div class="page-header">
     <div>
       <h2>All Platform Branches</h2>
-      <p class="subtitle">Directory of all retail outlets and warehouse branches across all stores</p>
+      <p class="subtitle">Super Admin exclusive: Create retail branches and manage branch-level module licenses</p>
     </div>
+    <button class="btn btn-primary" (click)="openCreateModal()">
+      <span>+</span> Create Branch
+    </button>
   </div>
 
   <div class="card">
@@ -15,8 +18,10 @@
             <th>Branch Code</th>
             <th>Store Tenant</th>
             <th>City / State</th>
-            <th>Staff Count</th>
+            <th>Active Modules</th>
+            <th>Staff</th>
             <th>Status</th>
+            <th>Actions</th>
           </tr>
         </thead>
         <tbody>
@@ -29,31 +34,278 @@
             </td>
             <td>
               <div class="store-info">
-                <span>{{ b.store_name }}</span>
+                <span class="font-bold">{{ b.store_name }}</span>
                 <span class="text-dim">({{ b.store_code }})</span>
               </div>
             </td>
             <td>{{ b.city || '—' }}{{ b.state ? ', ' + b.state : '' }}</td>
             <td>
-              <span class="badge badge-role">{{ b.user_count || 0 }} assigned</span>
+              <div class="module-pills-wrap">
+                <span *ngFor="let m of b.active_modules?.slice(0, 3)" class="mod-pill">
+                  {{ m.name }}
+                </span>
+                <span *ngIf="b.active_modules?.length > 3" class="mod-pill-more">
+                  +{{ b.active_modules.length - 3 }} more
+                </span>
+                <span *ngIf="!b.active_modules || b.active_modules.length === 0" class="text-dim text-xs">
+                  No modules
+                </span>
+              </div>
+            </td>
+            <td>
+              <span class="badge badge-role">{{ b.user_count || 0 }}</span>
             </td>
             <td>
               <span class="badge" [ngClass]="b.status === 'ACTIVE' ? 'badge-active' : 'badge-inactive'">
                 {{ b.status }}
               </span>
             </td>
+            <td>
+              <div class="actions-group">
+                <button class="btn btn-sm btn-edit-action" (click)="openEditModal(b)" title="Edit Branch Details">
+                  <span>✏️</span> Edit
+                </button>
+                <button class="btn btn-sm btn-secondary" (click)="openModuleModal(b)" title="Configure Branch Modules">
+                  <span>⚙️</span> Modules
+                </button>
+                <button
+                  class="btn btn-sm"
+                  [ngClass]="b.status === 'ACTIVE' ? 'btn-danger-ghost' : 'btn-success-ghost'"
+                  (click)="toggleStatus(b)"
+                  title="Toggle Branch Active Status"
+                >
+                  {{ b.status === 'ACTIVE' ? 'Deactivate' : 'Activate' }}
+                </button>
+              </div>
+            </td>
           </tr>
 
           <tr *ngIf="branches.length === 0">
-            <td colspan="6" class="text-center py-6">
+            <td colspan="8" class="text-center py-6">
               <div class="empty-state">
                 <span>📍</span>
-                <p>No branches found across the platform.</p>
+                <p>No branches found across the platform. Click "+ Create Branch" to create one.</p>
               </div>
             </td>
           </tr>
         </tbody>
       </table>
+    </div>
+  </div>
+
+  <!-- Create Branch Modal (Super Admin Exclusive) -->
+  <div class="modal-backdrop" *ngIf="showCreateModal">
+    <div class="modal-card modal-lg">
+      <div class="modal-header">
+        <div class="modal-title-group">
+          <div class="modal-icon">🏢</div>
+          <div>
+            <h3>{{ isEditMode ? 'Edit Branch' : 'Create New Branch' }}</h3>
+            <p class="modal-sub">{{ isEditMode ? 'Update branch location, counter hours, and store assignment' : 'Add a physical counter, retail outlet, or warehouse to a store tenant' }}</p>
+          </div>
+        </div>
+        <button class="btn-close" (click)="closeCreateModal()" title="Close">✕</button>
+      </div>
+
+      <form [formGroup]="branchForm" (ngSubmit)="onSubmitCreate()">
+        <div class="modal-body">
+          <div *ngIf="createErrorMessage" class="alert-box alert-danger mb-3">
+            <span>⚠️</span> <span>{{ createErrorMessage }}</span>
+          </div>
+
+          <div class="form-grid">
+            <!-- Store Selection -->
+            <div class="form-group col-span-2">
+              <label class="form-label">Select Store Tenant <span class="required">*</span></label>
+              <select formControlName="storeId" class="form-control select-control">
+                <option value="">-- Choose Store Tenant --</option>
+                <option *ngFor="let s of stores" [value]="s.id">
+                  {{ s.name }} ({{ s.code }})
+                </option>
+              </select>
+              <div *ngIf="submitted && f['storeId'].errors" class="form-error">Store tenant is required</div>
+            </div>
+
+            <!-- Branch Name & Code -->
+            <div class="form-group">
+              <label class="form-label">Branch Name <span class="required">*</span></label>
+              <input type="text" formControlName="name" class="form-control" placeholder="e.g. Airport Road Branch" />
+              <div *ngIf="submitted && f['name'].errors" class="form-error">Branch name is required</div>
+            </div>
+
+            <div class="form-group">
+              <label class="form-label">Branch Code <span class="required">*</span></label>
+              <input type="text" formControlName="code" class="form-control" placeholder="e.g. BR-AIRPORT-02" style="text-transform: uppercase;" />
+              <div *ngIf="submitted && f['code'].errors" class="form-error">Valid code required (letters/numbers)</div>
+            </div>
+
+            <!-- Address -->
+            <div class="form-group col-span-2">
+              <label class="form-label">Street Address</label>
+              <input type="text" formControlName="address" class="form-control" placeholder="Building, Street, Landmark" />
+            </div>
+
+            <!-- City, State, Pincode -->
+            <div class="form-group">
+              <label class="form-label">City</label>
+              <input type="text" formControlName="city" class="form-control" placeholder="e.g. Jaipur" />
+            </div>
+
+            <div class="form-group">
+              <label class="form-label">State</label>
+              <input type="text" formControlName="state" class="form-control" placeholder="e.g. Rajasthan" />
+            </div>
+
+            <div class="form-group col-span-2">
+              <label class="form-label">Pincode / Postal Code</label>
+              <input type="text" formControlName="pincode" class="form-control" placeholder="e.g. 302001" />
+            </div>
+
+            <!-- Opening Time & Closing Time -->
+            <div class="form-group">
+              <label class="form-label">Opening Time <span class="required">*</span></label>
+              <div class="time-input-wrap">
+                <input type="time" formControlName="openingTime" class="form-control" />
+                <span class="time-icon">🕒</span>
+              </div>
+            </div>
+
+            <div class="form-group">
+              <label class="form-label">Closing Time <span class="required">*</span></label>
+              <div class="time-input-wrap">
+                <input type="time" formControlName="closingTime" class="form-control" />
+                <span class="time-icon">🕒</span>
+              </div>
+            </div>
+
+            <!-- Branch Logo Upload -->
+            <div class="form-group col-span-2">
+              <label class="form-label">Branch Logo</label>
+              <div class="branch-logo-upload-wrap" (click)="logoFileInput.click()">
+                <input #logoFileInput type="file" hidden (change)="onBranchLogoSelect($event)" accept="image/*" />
+                <div class="upload-prompt" *ngIf="!branchForm.get('logoUrl')?.value">
+                  <span class="upload-icon">🖼️</span>
+                  <span>{{ uploadingBranchLogo ? 'Uploading logo...' : 'Click to upload branch logo (PNG, JPG, SVG)' }}</span>
+                </div>
+                <div class="logo-preview-box" *ngIf="branchForm.get('logoUrl')?.value">
+                  <img [src]="branchForm.get('logoUrl')?.value" alt="Branch Logo" class="branch-logo-preview" />
+                  <span class="logo-name-badge">✅ {{ branchLogoFileName || 'Branch Logo Uploaded' }}</span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Section: Branch Modules Configuration (Only on Create Branch) -->
+          <div class="branch-modules-section" *ngIf="!isEditMode">
+            <div class="section-title-bar">
+              <div class="section-title-left">
+                <span class="step-num">⚙️</span>
+                <div>
+                  <h4>Branch Module Licensing</h4>
+                  <p class="section-sub">Select which features are enabled for this specific branch</p>
+                </div>
+              </div>
+              <div class="section-actions">
+                <span class="module-counter-badge">
+                  {{ selectedModuleIds.size }} of {{ catalogModules.length }} Active
+                </span>
+                <button type="button" class="btn-text-action" (click)="selectAllModules()">Select All</button>
+                <span class="sep">•</span>
+                <button type="button" class="btn-text-action" (click)="deselectAllModules()">Clear All</button>
+              </div>
+            </div>
+
+            <div class="modules-selection-grid">
+              <div
+                *ngFor="let mod of catalogModules"
+                class="module-check-box"
+                [class.checked]="isModuleSelected(mod.id)"
+                (click)="toggleModule(mod.id)"
+              >
+                <div class="check-box-indicator">
+                  <span *ngIf="isModuleSelected(mod.id)">✓</span>
+                </div>
+                <div class="mod-details">
+                  <span class="mod-title">{{ mod.module_name }}</span>
+                  <span class="mod-code">{{ mod.module_code }}</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="modal-footer">
+          <div class="footer-note" *ngIf="!isEditMode">
+            <span>💡 Modules can be adjusted anytime after creation</span>
+          </div>
+          <div class="footer-actions">
+            <button type="button" class="btn btn-secondary" (click)="closeCreateModal()">Cancel</button>
+            <button type="submit" class="btn btn-primary" [disabled]="creating">
+              <span *ngIf="creating" class="spinner"></span>
+              <span>{{ creating ? 'Saving...' : (isEditMode ? 'Save Changes' : 'Create & Provision Branch') }}</span>
+            </button>
+          </div>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Configure Modules Modal -->
+  <div class="modal-backdrop" *ngIf="showModuleModal">
+    <div class="modal-card">
+      <div class="modal-header">
+        <div>
+          <h3>Configure Branch Modules</h3>
+          <p class="modal-sub">
+            Branch: <span class="font-bold text-accent">{{ selectedBranchForModules?.name }}</span>
+          </p>
+        </div>
+        <button class="btn-close" (click)="closeModuleModal()">✕</button>
+      </div>
+
+      <div *ngIf="moduleSuccessMessage" class="alert-box alert-success">
+        <span>✓</span> {{ moduleSuccessMessage }}
+      </div>
+      <div *ngIf="moduleErrorMessage" class="alert-box alert-danger">
+        <span>⚠️</span> {{ moduleErrorMessage }}
+      </div>
+
+      <div class="modal-body" *ngIf="loadingModules">
+        <div class="py-8 text-center text-dim">
+          <span class="spinner"></span> Loading branch module configuration...
+        </div>
+      </div>
+
+      <div class="modal-body" *ngIf="!loadingModules">
+        <p class="text-dim text-sm mb-4">
+          Toggle modules on or off for this branch. Changes affect both frontend navigation and backend authorization immediately.
+        </p>
+
+        <div class="modules-list">
+          <div *ngFor="let mod of branchModules" class="module-row" [class.enabled]="mod.is_enabled">
+            <div class="mod-info">
+              <span class="mod-name">{{ mod.module_name }}</span>
+              <span class="mod-code">{{ mod.module_code }}</span>
+            </div>
+            <label class="switch">
+              <input
+                type="checkbox"
+                [checked]="mod.is_enabled"
+                (change)="toggleBranchModule(mod)"
+              />
+              <span class="slider"></span>
+            </label>
+          </div>
+        </div>
+      </div>
+
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" (click)="closeModuleModal()">Cancel</button>
+        <button type="button" class="btn btn-primary" (click)="saveBranchModules()" [disabled]="savingModules || loadingModules">
+          <span *ngIf="savingModules" class="spinner"></span>
+          <span>{{ savingModules ? 'Saving...' : 'Save Configuration' }}</span>
+        </button>
+      </div>
     </div>
   </div>
 </div>

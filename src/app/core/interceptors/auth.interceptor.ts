@@ -14,16 +14,18 @@ export const authInterceptor: HttpInterceptorFn = (req, next) => {
     headers['Authorization'] = `Bearer ${token}`;
   }
 
-  // If Super Admin has selected a store context, propagate store and branch IDs
+  // If Super Admin has selected a store, propagate x-store-id
   if (authService.isSuperAdmin()) {
     const activeStoreId = storeContext.selectedStoreId();
     if (activeStoreId) {
       headers['x-store-id'] = activeStoreId.toString();
     }
-    const activeBranchId = storeContext.selectedBranchId();
-    if (activeBranchId) {
-      headers['x-branch-id'] = activeBranchId.toString();
-    }
+  }
+
+  // Propagate active branch ID for ALL authenticated requests
+  const activeBranchId = storeContext.selectedBranchId();
+  if (activeBranchId) {
+    headers['x-branch-id'] = activeBranchId.toString();
   }
 
   const authReq = req.clone({

@@ -1,0 +1,644 @@
+<div class="stock-page-container">
+  <!-- Toast Alerts -->
+  <div class="toast-alert toast-success" *ngIf="successMessage()">
+    <span class="toast-icon">✓</span>
+    <span>{{ successMessage() }}</span>
+  </div>
+
+  <div class="toast-alert toast-danger" *ngIf="errorMessage() && !isModalOpen() && !isImportModalOpen()">
+    <span class="toast-icon">⚠️</span>
+    <span>{{ errorMessage() }}</span>
+  </div>
+
+  <!-- Header Action Row: + Update Stock & + Add Stock -->
+  <div class="header-action-row">
+    <div class="header-action-btns">
+      <button class="btn-top-primary" (click)="openAddModal()">
+        <span class="btn-plus">+</span> Add Stock
+      </button>
+    </div>
+  </div>
+
+  <!-- Filter & Action Controls Toolbar (Reset Stock, Import, Export) -->
+  <div class="stock-toolbar-row">
+    <!-- Left: Select Category Dropdown & Refresh Button -->
+    <div class="toolbar-left">
+      <div class="category-filter-container">
+        <label class="filter-label">Select Category</label>
+        <div class="category-select-group">
+          <div class="select-wrap">
+            <select
+              class="category-select-control"
+              [(ngModel)]="selectedCategory"
+              (change)="onCategoryChange()"
+            >
+              <option value="all">All Categories</option>
+              <option *ngFor="let cat of categories()" [value]="cat.id">
+                {{ cat.category_name }}
+              </option>
+            </select>
+          </div>
+          <button
+            type="button"
+            class="btn-refresh-control"
+            (click)="refreshStockData()"
+            title="Refresh Stock List"
+          >
+            <svg class="refresh-svg-icon" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.67-1.19" />
+            </svg>
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Right: Action Buttons Group (Reset Stock, Import, Export) -->
+    <div class="toolbar-right">
+      <!-- 1. Reset Stock Button -->
+      <button
+        type="button"
+        class="btn-toolbar-outline btn-reset"
+        (click)="openResetModal()"
+        title="Reset All Stock Records"
+      >
+        <svg class="toolbar-btn-icon" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8" />
+          <path d="M21 3v5h-5" />
+          <path d="M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16" />
+          <path d="M8 16H3v5" />
+        </svg>
+        <span>Reset Stock</span>
+      </button>
+
+      <!-- 2. Import Button -->
+      <button
+        type="button"
+        class="btn-toolbar-outline btn-import"
+        (click)="openImportModal()"
+        title="Import Stock from Excel/CSV"
+      >
+        <svg class="toolbar-btn-icon" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+          <polyline points="7 10 12 15 17 10" />
+          <line x1="12" y1="15" x2="12" y2="3" />
+        </svg>
+        <span>Import</span>
+      </button>
+
+      <!-- 3. Export Button -->
+      <button
+        type="button"
+        class="btn-toolbar-outline btn-export"
+        (click)="exportStockData()"
+        title="Export Stock to Excel/CSV"
+      >
+        <svg class="toolbar-btn-icon" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+          <polyline points="17 8 12 3 7 8" />
+          <line x1="12" y1="3" x2="12" y2="15" />
+        </svg>
+        <span>Export</span>
+      </button>
+    </div>
+  </div>
+
+  <!-- Search Input Bar (Spanning Full Width Matching Screenshot 1) -->
+  <div class="search-bar-container">
+    <div class="search-input-box">
+      <input
+        type="text"
+        class="full-search-input"
+        placeholder=""
+        [(ngModel)]="searchTerm"
+        (input)="applyFilter()"
+      />
+      <span class="search-trailing-icon">🔍</span>
+    </div>
+  </div>
+
+  <!-- Stock Data Table Card (12 Columns Matching Screenshot 1) -->
+  <div class="table-card">
+    <div class="table-responsive">
+      <table class="custom-data-table">
+        <thead>
+          <tr>
+            <th class="col-sl">Sl No <span class="sort-arrows">⇅</span></th>
+            <th>Product Name <span class="sort-arrows">⇅</span></th>
+            <th>Supplier Name <span class="sort-arrows">⇅</span></th>
+            <th>Price <span class="sort-arrows">⇅</span></th>
+            <th>Unit <span class="sort-arrows">⇅</span></th>
+            <th>Quantity(In-Hand) <span class="sort-arrows">⇅</span></th>
+            <th>Actual Quantity <span class="sort-arrows">⇅</span></th>
+            <th>Critical Quantity <span class="sort-arrows">⇅</span></th>
+            <th>Order Quantity <span class="sort-arrows">⇅</span></th>
+            <th>Status <span class="sort-arrows">⇅</span></th>
+            <th>Created On <span class="sort-arrows">⇅</span></th>
+            <th class="text-center">Action <span class="sort-arrows">⇅</span></th>
+          </tr>
+        </thead>
+
+        <tbody>
+          <!-- Loading State -->
+          <tr *ngIf="loading()">
+            <td colspan="12" class="state-cell">
+              <div class="spinner-wrap">
+                <div class="spinner"></div>
+                <span>Loading stock inventory...</span>
+              </div>
+            </td>
+          </tr>
+
+          <!-- Empty State -->
+          <tr *ngIf="!loading() && paginatedStocks.length === 0">
+            <td colspan="12" class="state-cell empty-state">
+              <div class="empty-icon-wrap">
+                <span class="empty-box-icon">📦</span>
+              </div>
+              <div class="empty-title">No stock records found</div>
+              <div class="empty-subtitle">Click "+ Add Stock" or "Import" to populate inventory.</div>
+            </td>
+          </tr>
+
+          <!-- Stock Data Rows -->
+          <tr *ngFor="let stock of paginatedStocks; let idx = index" class="data-row">
+            <!-- 1. Sl No -->
+            <td class="col-sl font-medium text-slate-700">
+              {{ (currentPage - 1) * pageSize + idx + 1 }}
+            </td>
+
+            <!-- 2. Product Name -->
+            <td class="font-semibold text-slate-900">
+              {{ stock.product_name }}
+              <span class="barcode-badge" *ngIf="stock.product_barcode">
+                {{ stock.product_barcode }}
+              </span>
+            </td>
+
+            <!-- 3. Supplier Name -->
+            <td class="text-slate-800">
+              {{ stock.supplier_name || '-' }}
+            </td>
+
+            <!-- 4. Price -->
+            <td class="text-slate-900 font-semibold">
+              {{ stock.price }}
+            </td>
+
+            <!-- 5. Unit -->
+            <td class="text-slate-800 font-medium">
+              {{ stock.unit || 'pcs' }}
+            </td>
+
+            <!-- 6. Quantity(In-Hand) -->
+            <td class="font-semibold">
+              <span
+                class="qty-pill"
+                [class.low-stock]="stock.critical_quantity > 0 && stock.quantity <= stock.critical_quantity"
+              >
+                {{ stock.quantity }}
+              </span>
+            </td>
+
+            <!-- 7. Actual Quantity -->
+            <td class="text-slate-900 font-semibold">
+              {{ stock.actual_quantity !== null && stock.actual_quantity !== undefined ? stock.actual_quantity : stock.quantity }}
+            </td>
+
+            <!-- 8. Critical Quantity -->
+            <td>
+              <span class="critical-text" *ngIf="stock.critical_quantity > 0">
+                {{ stock.critical_quantity }}
+              </span>
+              <span class="text-muted" *ngIf="!stock.critical_quantity || stock.critical_quantity === 0">-</span>
+            </td>
+
+            <!-- 9. Order Quantity -->
+            <td>
+              {{ stock.order_quantity || '-' }}
+            </td>
+
+            <!-- 10. Status (Modern Toggle Switch Matching Screenshot 1) -->
+            <td>
+              <label class="switch-toggle" (click)="toggleStockStatus(stock, $event)">
+                <input
+                  type="checkbox"
+                  [checked]="stock.status === 'ACTIVE'"
+                  readonly
+                />
+                <span class="slider-round"></span>
+              </label>
+            </td>
+
+            <!-- 11. Created On (DD/MM/YYYY Format Matching Screenshot 1) -->
+            <td class="text-slate-600 text-sm whitespace-nowrap">
+              {{ stock.created_at ? (stock.created_at | date:'dd/MM/yyyy') : '24/08/2026' }}
+            </td>
+
+            <!-- 12. Action (Edit & Delete Icons Matching Screenshot 1) -->
+            <td class="action-cell text-center">
+              <div class="actions-group">
+                <button
+                  type="button"
+                  class="action-btn edit-btn"
+                  (click)="openEditModal(stock)"
+                  title="Edit Stock"
+                >
+                  <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" />
+                    <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" />
+                  </svg>
+                </button>
+                <button
+                  type="button"
+                  class="action-btn delete-btn"
+                  (click)="openDeleteModal(stock, $event)"
+                  title="Delete Stock"
+                >
+                  <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <polyline points="3 6 5 6 21 6" />
+                    <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
+                  </svg>
+                </button>
+              </div>
+            </td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <!-- Table Pagination Footer (Matching Screenshot 1) -->
+    <div class="table-pagination-footer" *ngIf="!loading() && filteredStocks().length > 0">
+      <div class="entries-info">
+        Showing {{ startEntry }} to {{ endEntry }} of {{ filteredStocks().length }} entries
+      </div>
+
+      <div class="pagination-controls">
+        <button
+          class="page-nav-btn"
+          [disabled]="currentPage === 1"
+          (click)="prevPage()"
+        >
+          Previous
+        </button>
+
+        <button
+          *ngFor="let page of [].constructor(totalPages); let p = index"
+          class="page-num-btn"
+          [class.active]="currentPage === p + 1"
+          (click)="goToPage(p + 1)"
+        >
+          {{ p + 1 }}
+        </button>
+
+        <button
+          class="page-nav-btn"
+          [disabled]="currentPage === totalPages"
+          (click)="nextPage()"
+        >
+          Next
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ============================================================== -->
+  <!-- 1. RESET STOCK MODAL (Matching Screenshot 2)                   -->
+  <!-- ============================================================== -->
+  <div class="modal-backdrop" *ngIf="isResetModalOpen()" (click)="closeResetModal()">
+    <div class="modal-dialog reset-modal-dialog" (click)="$event.stopPropagation()">
+      <!-- Close Button Top Right -->
+      <button class="btn-dialog-close" (click)="closeResetModal()" aria-label="Close">
+        ✕
+      </button>
+
+      <!-- Confirmation Question (Matching Screenshot 2) -->
+      <div class="reset-modal-content">
+        <h3 class="reset-prompt-title">Are you sure, you want to delete all Stock!</h3>
+
+        <!-- Buttons Row (Cancel & Delete All) -->
+        <div class="reset-actions-row">
+          <button type="button" class="btn-dialog-cancel" (click)="closeResetModal()" [disabled]="resetting()">
+            Cancel
+          </button>
+          <button type="button" class="btn-dialog-delete-all" (click)="confirmResetStock()" [disabled]="resetting()">
+            {{ resetting() ? 'Deleting...' : 'Delete All' }}
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ============================================================== -->
+  <!-- 2. IMPORT STOCK MODAL (Matching Screenshot 3)                  -->
+  <!-- ============================================================== -->
+  <div class="modal-backdrop" *ngIf="isImportModalOpen()" (click)="closeImportModal()">
+    <div class="modal-dialog import-modal-dialog" (click)="$event.stopPropagation()">
+      <!-- Modal Header -->
+      <div class="modal-header import-header">
+        <h3 class="import-title">Import Stock</h3>
+        <button class="btn-dialog-close" (click)="closeImportModal()" aria-label="Close">
+          ✕
+        </button>
+      </div>
+
+      <!-- Import Modal Body -->
+      <div class="import-modal-body">
+        <!-- Error Banner -->
+        <div *ngIf="importError()" class="import-error-banner">
+          <span>⚠️</span> {{ importError() }}
+        </div>
+
+        <!-- Drag & Drop Dashed Upload Zone (Matching Screenshot 3) -->
+        <div
+          class="dashed-upload-zone"
+          [class.drag-over]="isDragging()"
+          (dragover)="onDragOver($event)"
+          (dragleave)="onDragLeave($event)"
+          (drop)="onDrop($event)"
+          (click)="fileInput.click()"
+        >
+          <input
+            #fileInput
+            type="file"
+            accept=".csv, .xlsx, .xls"
+            class="hidden-file-input"
+            (change)="onFileSelected($event)"
+          />
+
+          <!-- Upload Icon (Document with down-arrow matching Screenshot 3) -->
+          <div class="upload-icon-circle">
+            <svg viewBox="0 0 24 24" width="48" height="48" fill="none" stroke="#0ea5e9" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+              <polyline points="14 2 14 8 20 8" />
+              <line x1="12" y1="18" x2="12" y2="12" />
+              <polyline points="9 15 12 18 15 15" />
+            </svg>
+          </div>
+
+          <!-- Upload Prompt Texts -->
+          <div class="upload-primary-text">Upload or Drag and Drop the file</div>
+          <div class="upload-secondary-text">Only Excel, csv files</div>
+
+          <!-- Selected File Badge -->
+          <div *ngIf="selectedFile()" class="selected-file-badge" (click)="$event.stopPropagation()">
+            <span class="file-name-text">📄 {{ selectedFile()?.name }} ({{ parsedCount() }} records parsed)</span>
+            <button type="button" class="btn-remove-file" (click)="removeSelectedFile($event)" title="Remove file">✕</button>
+          </div>
+        </div>
+
+        <!-- Download Template Link (Right Aligned Matching Screenshot 3) -->
+        <div class="template-link-row">
+          <a href="javascript:void(0)" class="download-template-link" (click)="downloadExcelTemplate()">
+            Download Excel Template
+          </a>
+        </div>
+
+        <!-- Footer Actions (Cancel & Import) -->
+        <div class="import-actions-row">
+          <button type="button" class="btn-dialog-cancel" (click)="closeImportModal()" [disabled]="importing()">
+            Cancel
+          </button>
+          <button type="button" class="btn-dialog-import" (click)="executeImport()" [disabled]="importing()">
+            {{ importing() ? 'Importing...' : 'Import' }}
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ============================================================== -->
+  <!-- 3. ADD / EDIT IN STOCK MODAL                                   -->
+  <!-- ============================================================== -->
+  <div class="modal-backdrop" *ngIf="isModalOpen()" (click)="closeModal()">
+    <div class="modal-dialog stock-modal-dialog" (click)="$event.stopPropagation()">
+      <!-- Modal Header -->
+      <div class="modal-header">
+        <h3 class="modal-title">{{ isEditMode() ? 'Edit In Stock' : 'Add In Stock' }}</h3>
+        <button class="btn-close-modal" (click)="closeModal()" aria-label="Close">✕</button>
+      </div>
+
+      <!-- Error inside modal -->
+      <div *ngIf="errorMessage()" class="modal-alert alert-danger">
+        <span>⚠️</span> {{ errorMessage() }}
+      </div>
+
+      <!-- Form Body -->
+      <form [formGroup]="stockForm" (ngSubmit)="onSubmit()" class="stock-modal-form">
+        <!-- Row 1: Select Product * & Category * -->
+        <div class="form-row two-cols">
+          <!-- Select Product (Searchable Dropdown) -->
+          <div class="form-field">
+            <label class="form-label">
+              Select Product <span class="required-star">*</span>
+            </label>
+            <div class="dropdown-select-wrap">
+              <div
+                class="dropdown-trigger"
+                (click)="toggleProductDropdown()"
+                [class.has-error]="stockForm.get('productId')?.invalid && stockForm.get('productId')?.touched"
+              >
+                <span class="trigger-label" *ngIf="selectedProduct()">
+                  {{ selectedProduct()?.item_name }}
+                  <small *ngIf="selectedProduct()?.barcode">({{ selectedProduct()?.barcode }})</small>
+                </span>
+                <span class="trigger-placeholder" *ngIf="!selectedProduct()">
+                  Select Product
+                </span>
+                <div class="trigger-actions">
+                  <span
+                    class="clear-btn"
+                    *ngIf="selectedProduct()"
+                    (click)="clearProduct($event)"
+                    title="Clear selection"
+                  >✕</span>
+                  <span class="arrow-down">▾</span>
+                </div>
+              </div>
+
+              <!-- Product Dropdown Menu -->
+              <div class="dropdown-menu-list" *ngIf="productDropdownOpen()">
+                <div class="search-box-inside">
+                  <input
+                    type="text"
+                    placeholder="Search product name or barcode..."
+                    [(ngModel)]="productSearchTerm"
+                    [ngModelOptions]="{ standalone: true }"
+                    (click)="$event.stopPropagation()"
+                  />
+                </div>
+                <div class="menu-options-container">
+                  <div
+                    *ngFor="let p of filteredProductsList"
+                    class="option-item"
+                    [class.selected]="selectedProduct()?.id === p.id"
+                    (click)="selectProduct(p)"
+                  >
+                    <div class="item-name">{{ p.item_name }}</div>
+                    <div class="item-meta">
+                      <span *ngIf="p.barcode">Barcode: {{ p.barcode }}</span>
+                      <span *ngIf="p.category_name || p.display_category_name">• {{ p.category_name || p.display_category_name }}</span>
+                      <span *ngIf="p.msp">• ₹{{ p.msp }}</span>
+                    </div>
+                  </div>
+                  <div *ngIf="filteredProductsList.length === 0" class="no-options">
+                    No products found matching "{{ productSearchTerm }}"
+                  </div>
+                </div>
+              </div>
+            </div>
+            <div
+              *ngIf="stockForm.get('productId')?.invalid && stockForm.get('productId')?.touched"
+              class="field-error"
+            >
+              Product selection is required
+            </div>
+          </div>
+
+          <!-- Category (Auto-filled read-only) -->
+          <div class="form-field">
+            <label class="form-label">Category</label>
+            <input
+              type="text"
+              class="form-control disabled-fill"
+              placeholder="Auto-filled from product"
+              formControlName="categoryName"
+              readonly
+            />
+          </div>
+        </div>
+
+        <!-- Row 2: Supplier & Amount -->
+        <div class="form-row two-cols mt-3">
+          <div class="form-field">
+            <label class="form-label">Supplier</label>
+            <input
+              type="text"
+              class="form-control disabled-fill"
+              placeholder="Auto-filled from product"
+              formControlName="supplierName"
+              readonly
+            />
+          </div>
+
+          <div class="form-field">
+            <label class="form-label">Amount</label>
+            <input
+              type="number"
+              class="form-control disabled-fill"
+              placeholder="Price"
+              formControlName="price"
+              readonly
+            />
+          </div>
+        </div>
+
+        <!-- Row 3: Quantity * & Actual Quantity * -->
+        <div class="form-row two-cols mt-3">
+          <div class="form-field">
+            <label class="form-label">
+              Quantity <span class="required-star">*</span>
+            </label>
+            <input
+              type="number"
+              class="form-control"
+              placeholder="Enter Quantity"
+              formControlName="quantity"
+              [class.has-error]="stockForm.get('quantity')?.invalid && stockForm.get('quantity')?.touched"
+            />
+            <div
+              *ngIf="stockForm.get('quantity')?.invalid && stockForm.get('quantity')?.touched"
+              class="field-error"
+            >
+              Quantity is required (min 0)
+            </div>
+          </div>
+
+          <div class="form-field">
+            <label class="form-label">
+              Actual Quantity <span class="required-star">*</span>
+            </label>
+            <input
+              type="number"
+              class="form-control"
+              placeholder="Enter Actual Quantity"
+              formControlName="actualQuantity"
+              [class.has-error]="stockForm.get('actualQuantity')?.invalid && stockForm.get('actualQuantity')?.touched"
+            />
+            <div
+              *ngIf="stockForm.get('actualQuantity')?.invalid && stockForm.get('actualQuantity')?.touched"
+              class="field-error"
+            >
+              Actual quantity is required (min 0)
+            </div>
+          </div>
+        </div>
+
+        <!-- Row 4: Critical Quantity : & Order Quantity : -->
+        <div class="form-row two-cols mt-3">
+          <div class="form-field">
+            <label class="form-label">Critical Quantity :</label>
+            <input
+              type="number"
+              class="form-control"
+              placeholder="Enter Critical Quantity"
+              formControlName="criticalQuantity"
+            />
+          </div>
+
+          <div class="form-field">
+            <label class="form-label">Order Quantity :</label>
+            <input
+              type="number"
+              class="form-control"
+              placeholder="Enter Order Quantity"
+              formControlName="orderQuantity"
+            />
+          </div>
+        </div>
+
+        <!-- Row 5: Unit: (Auto-filled read-only) -->
+        <div class="form-row one-col mt-3">
+          <div class="form-field half-width">
+            <label class="form-label">Unit:</label>
+            <input
+              type="text"
+              class="form-control disabled-fill"
+              placeholder="Unit"
+              formControlName="unit"
+              readonly
+            />
+          </div>
+        </div>
+
+        <!-- Modal Footer Actions -->
+        <div class="modal-footer-actions mt-4">
+          <button type="button" class="btn-cancel" (click)="closeModal()">
+            Cancel
+          </button>
+          <button
+            type="submit"
+            class="btn-add-master"
+            [disabled]="submitting()"
+          >
+            {{ submitting() ? 'Saving...' : (isEditMode() ? 'Update Master' : 'Add Master') }}
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Delete Single Stock Confirmation Modal -->
+  <div class="modal-backdrop" *ngIf="isDeleteModalOpen()" (click)="closeDeleteModal()">
+    <div class="modal-dialog delete-dialog" (click)="$event.stopPropagation()">
+      <div class="delete-icon">⚠️</div>
+      <h3 class="delete-title">Delete Stock Master</h3>
+      <p class="delete-desc">
+        Are you sure you want to remove the stock record for <strong>{{ deletingStock()?.product_name }}</strong>?
+      </p>
+      <div class="delete-actions">
+        <button class="btn-cancel" (click)="closeDeleteModal()">Cancel</button>
+        <button class="btn-confirm-delete" (click)="confirmDelete()">Delete</button>
+      </div>
+    </div>
+  </div>
+</div>

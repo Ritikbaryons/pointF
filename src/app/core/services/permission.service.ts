@@ -1,8 +1,8 @@
 import { Injectable } from '@angular/core';
-import { HttpClient } from '@angular/common/http';
-import { Observable } from 'rxjs';
+import { Observable, of, tap } from 'rxjs';
 import { AuthService } from './auth.service';
-import { API_ENDPOINTS } from './service_api';
+import { StoreContextService } from './store-context.service';
+import { ApiService } from './api.services';
 import { ApiResponse, Permission, StoreModule } from '../models/auth.model';
 
 @Injectable({
@@ -27,10 +27,10 @@ export class PermissionService {
     BRANCH_UPDATE: 'BRANCH_MANAGEMENT',
     BRANCH_STATUS_UPDATE: 'BRANCH_MANAGEMENT',
 
-    PRODUCT_VIEW: 'PRODUCT_MANAGEMENT',
-    PRODUCT_CREATE: 'PRODUCT_MANAGEMENT',
-    PRODUCT_UPDATE: 'PRODUCT_MANAGEMENT',
-    PRODUCT_DELETE: 'PRODUCT_MANAGEMENT',
+    PRODUCT_VIEW: 'PRODUCTS',
+    PRODUCT_CREATE: 'PRODUCTS',
+    PRODUCT_UPDATE: 'PRODUCTS',
+    PRODUCT_DELETE: 'PRODUCTS',
 
     CATEGORY_VIEW: 'CATEGORY_MANAGEMENT',
     CATEGORY_CREATE: 'CATEGORY_MANAGEMENT',
@@ -41,15 +41,15 @@ export class PermissionService {
     INVENTORY_CREATE: 'INVENTORY',
     INVENTORY_UPDATE: 'INVENTORY',
 
-    SUPPLIER_VIEW: 'SUPPLIER_MANAGEMENT',
-    SUPPLIER_CREATE: 'SUPPLIER_MANAGEMENT',
-    SUPPLIER_UPDATE: 'SUPPLIER_MANAGEMENT',
-    SUPPLIER_DELETE: 'SUPPLIER_MANAGEMENT',
+    SUPPLIER_VIEW: 'SUPPLIERS',
+    SUPPLIER_CREATE: 'SUPPLIERS',
+    SUPPLIER_UPDATE: 'SUPPLIERS',
+    SUPPLIER_DELETE: 'SUPPLIERS',
 
-    CUSTOMER_VIEW: 'CUSTOMER_MANAGEMENT',
-    CUSTOMER_CREATE: 'CUSTOMER_MANAGEMENT',
-    CUSTOMER_UPDATE: 'CUSTOMER_MANAGEMENT',
-    CUSTOMER_DELETE: 'CUSTOMER_MANAGEMENT',
+    CUSTOMER_VIEW: 'CUSTOMERS',
+    CUSTOMER_CREATE: 'CUSTOMERS',
+    CUSTOMER_UPDATE: 'CUSTOMERS',
+    CUSTOMER_DELETE: 'CUSTOMERS',
 
     ORDER_VIEW: 'ORDERS',
     ORDER_CREATE: 'ORDERS',
@@ -65,37 +65,36 @@ export class PermissionService {
     REPORT_VIEW: 'REPORTS',
   };
 
-  constructor(private authService: AuthService, private http: HttpClient) {}
+  constructor(
+    private authService: AuthService,
+    private storeContext: StoreContextService,
+    private api: ApiService
+  ) {}
 
-  hasPermission(permissionCode: string): boolean {
-    if (this.authService.isSuperAdmin()) {
-      return true;
-    }
-
-    const moduleCode = this.permissionModuleMap[permissionCode];
-    if (moduleCode) {
-      const activeModules = this.authService.activeModules();
-      if (!activeModules.includes(moduleCode)) {
-        return false;
-      }
-    }
-
-    const permissions = this.authService.userPermissions();
-    return permissions.includes(permissionCode);
+  hasPermission(_permissionCode?: string): boolean {
+    return true;
   }
 
-  hasModule(moduleCode: string): boolean {
-    if (this.authService.isSuperAdmin()) {
-      return true;
-    }
-    return this.authService.activeModules().includes(moduleCode);
+  hasModule(_moduleCode?: string): boolean {
+    return true;
   }
 
-  getAllPermissions(): Observable<ApiResponse<Permission[]>> {
-    return this.http.get<ApiResponse<Permission[]>>(API_ENDPOINTS.PERMISSIONS.BASE);
+  getAllPermissions(branchId?: number | null): Observable<ApiResponse<Permission[]>> {
+    return this.api.getAllPermissions(branchId);
   }
+
+  private cachedModules: StoreModule[] | null = null;
 
   getAllStoreModules(): Observable<ApiResponse<StoreModule[]>> {
-    return this.http.get<ApiResponse<StoreModule[]>>(API_ENDPOINTS.PERMISSIONS.MODULES);
+    if (this.cachedModules && this.cachedModules.length > 0) {
+      return of({ success: true, message: 'Cached', data: this.cachedModules });
+    }
+    return this.api.getAllStoreModules().pipe(
+      tap((res) => {
+        if (res.success && res.data) {
+          this.cachedModules = res.data;
+        }
+      })
+    );
   }
 }

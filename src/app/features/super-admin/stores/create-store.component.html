@@ -1,14 +1,16 @@
 <div class="create-store-page">
+  <!-- Page Header -->
   <div class="page-header">
     <div>
       <h2>Create New Store</h2>
-      <p class="subtitle">Onboard a new grocery tenant with module licensing and owner access</p>
+      <p class="subtitle">Onboard a new grocery tenant with multi-branch management, licensing, and owner credentials</p>
     </div>
     <a routerLink="/admin/stores" class="btn btn-secondary">
       <span>←</span> Back to Stores
     </a>
   </div>
 
+  <!-- Error Alert -->
   <div *ngIf="errorMessage" class="alert-box alert-danger">
     <span>⚠️</span>
     <span>{{ errorMessage }}</span>
@@ -21,64 +23,367 @@
         <span class="step-num">1</span>
         <div>
           <h3>Store Information</h3>
-          <p class="section-sub">Basic identification and contact details for the grocery business</p>
+          <p class="section-sub">Basic identification, registration, location, and operational schedule</p>
         </div>
       </div>
 
       <div class="form-grid">
+        <!-- Store Name -->
         <div class="form-group">
-          <label class="form-label">Store Name *</label>
-          <input type="text" formControlName="name" class="form-control" placeholder="e.g. Sharma Grocery" />
+          <label class="form-label">Store Name <span class="required">*</span></label>
+          <input
+            type="text"
+            formControlName="name"
+            class="form-control"
+            placeholder="e.g. Fresh Supermarket"
+            [class.is-invalid]="submitted && f['name'].errors"
+          />
           <div *ngIf="submitted && f['name'].errors" class="form-error">Store name is required</div>
         </div>
 
+        <!-- Store Registration No -->
         <div class="form-group">
-          <label class="form-label">Store Code (Unique) *</label>
-          <input type="text" formControlName="code" class="form-control" placeholder="e.g. SHARMA001" style="text-transform: uppercase;" />
-          <div *ngIf="submitted && f['code'].errors" class="form-error">Store code is required</div>
+          <label class="form-label">Store Registration No <span class="required">*</span></label>
+          <input
+            type="text"
+            formControlName="registrationNo"
+            class="form-control"
+            placeholder="e.g. REG-2026-9901"
+            [class.is-invalid]="submitted && f['registrationNo'].errors"
+          />
+          <div *ngIf="submitted && f['registrationNo'].errors" class="form-error">Registration number is required</div>
         </div>
 
+        <!-- TRN Number -->
         <div class="form-group">
-          <label class="form-label">Official Email</label>
-          <input type="email" formControlName="email" class="form-control" placeholder="store@example.com" />
+          <label class="form-label">TRN Number <span class="required">*</span></label>
+          <input
+            type="text"
+            formControlName="trnNumber"
+            class="form-control"
+            placeholder="e.g. 10023456789"
+            [class.is-invalid]="submitted && f['trnNumber'].errors"
+          />
+          <div *ngIf="submitted && f['trnNumber'].errors" class="form-error">TRN Number is required</div>
         </div>
 
+        <!-- Reset Time -->
         <div class="form-group">
-          <label class="form-label">Phone Number</label>
-          <input type="text" formControlName="phone" class="form-control" placeholder="+91 9876543210" />
+          <label class="form-label">Daily Reset Time <span class="required">*</span></label>
+          <div class="time-input-wrap">
+            <input
+              type="time"
+              formControlName="resetTime"
+              class="form-control"
+              [class.is-invalid]="submitted && f['resetTime'].errors"
+            />
+            <span class="time-clock-icon">🕒</span>
+          </div>
+          <div *ngIf="submitted && f['resetTime'].errors" class="form-error">Reset time is required</div>
         </div>
 
+        <!-- Address -->
         <div class="form-group col-span-2">
-          <label class="form-label">Street Address</label>
-          <input type="text" formControlName="address" class="form-control" placeholder="Plot 42, Market Complex" />
+          <label class="form-label">Address <span class="required">*</span></label>
+          <textarea
+            formControlName="address"
+            rows="2"
+            class="form-control textarea-control"
+            placeholder="e.g. Plot 42, Commercial District, Main Avenue"
+            [class.is-invalid]="submitted && f['address'].errors"
+          ></textarea>
+          <div *ngIf="submitted && f['address'].errors" class="form-error">Address is required</div>
         </div>
 
+        <!-- Country -->
         <div class="form-group">
-          <label class="form-label">City</label>
-          <input type="text" formControlName="city" class="form-control" placeholder="e.g. Jaipur" />
+          <label class="form-label">Select Country <span class="required">*</span></label>
+          <select
+            formControlName="countryId"
+            (change)="onCountryChange($any($event.target).value)"
+            class="form-control select-control"
+            [class.is-invalid]="submitted && f['countryId'].errors"
+          >
+            <option value="" disabled>Select Country</option>
+            <option *ngFor="let c of countries" [value]="c.id">{{ c.name }}</option>
+          </select>
+          <div *ngIf="submitted && f['countryId'].errors" class="form-error">Please select a country</div>
         </div>
 
+        <!-- City -->
         <div class="form-group">
-          <label class="form-label">State</label>
-          <input type="text" formControlName="state" class="form-control" placeholder="e.g. Rajasthan" />
+          <label class="form-label">Select City <span class="required">*</span></label>
+          <select
+            formControlName="cityId"
+            class="form-control select-control"
+            [class.is-invalid]="submitted && f['cityId'].errors"
+          >
+            <option value="" disabled>{{ loadingCities ? 'Loading cities...' : 'Select City' }}</option>
+            <option *ngFor="let ct of cities" [value]="ct.id">{{ ct.name }}</option>
+          </select>
+          <div *ngIf="submitted && f['cityId'].errors" class="form-error">Please select a city</div>
         </div>
 
+        <!-- PO Box -->
         <div class="form-group">
-          <label class="form-label">Postal / Pincode</label>
-          <input type="text" formControlName="pincode" class="form-control" placeholder="e.g. 302001" />
+          <label class="form-label">PO Box</label>
+          <input
+            type="text"
+            formControlName="poBox"
+            class="form-control"
+            placeholder="e.g. 12345"
+          />
         </div>
 
+        <!-- Official Email -->
         <div class="form-group">
-          <label class="form-label">Country</label>
-          <input type="text" formControlName="country" class="form-control" />
+          <label class="form-label">Official Email <span class="required">*</span></label>
+          <input
+            type="email"
+            formControlName="email"
+            class="form-control"
+            placeholder="e.g. store@example.com"
+            [class.is-invalid]="submitted && f['email'].errors"
+          />
+          <div *ngIf="submitted && f['email'].errors" class="form-error">Valid email is required</div>
+        </div>
+
+        <!-- Phone Numbers List Sub-Card -->
+        <div class="form-group col-span-2 phone-section-container">
+          <div class="phone-card">
+            <div class="phone-card-header">
+              <span class="phone-card-title">📞 Contact Phone Numbers</span>
+              <button type="button" class="btn btn-secondary btn-sm" (click)="addPhone()">
+                <span>➕</span> Add Phone No
+              </button>
+            </div>
+
+            <div class="phone-entries-list">
+              <div *ngFor="let phone of phoneList; let i = index" class="phone-row">
+                <div class="phone-group">
+                  <div class="dial-code-wrap">
+                    <span class="flag-icon">{{ phone.flag }}</span>
+                    <select
+                      [value]="phone.countryCode"
+                      (change)="onDialCodeChange(i, $any($event.target).value)"
+                      class="dial-code-select"
+                    >
+                      <option *ngFor="let item of countryDialCodes" [value]="item.code">
+                        {{ item.flag }} {{ item.code }}
+                      </option>
+                    </select>
+                  </div>
+                  <input
+                    type="tel"
+                    [(ngModel)]="phone.number"
+                    [ngModelOptions]="{standalone: true}"
+                    class="form-control phone-input"
+                    placeholder="Enter phone number"
+                  />
+                </div>
+
+                <label class="primary-radio-label">
+                  <input
+                    type="radio"
+                    name="primaryPhoneGroup"
+                    [checked]="phone.isPrimary"
+                    (change)="setPrimaryPhone(i)"
+                    class="radio-input"
+                  />
+                  <span>Primary Number</span>
+                </label>
+
+                <button
+                  type="button"
+                  class="btn-delete-phone"
+                  (click)="removePhone(i)"
+                  [disabled]="phoneList.length <= 1"
+                  title="Remove phone"
+                >
+                  🗑️
+                </button>
+              </div>
+            </div>
+          </div>
         </div>
       </div>
     </div>
 
-    <!-- Section 2: Module Access Licensing -->
+    <!-- Section 2: Store Owner & Administrator Credentials -->
     <div class="card section-card">
       <div class="section-title">
         <span class="step-num">2</span>
+        <div>
+          <h3>Store Owner Credentials</h3>
+          <p class="section-sub">Primary administrator account assigned to manage this store and its branches</p>
+        </div>
+      </div>
+
+      <div class="form-grid">
+        <!-- First Name -->
+        <div class="form-group">
+          <label class="form-label">Owner First Name <span class="required">*</span></label>
+          <input
+            type="text"
+            formControlName="ownerFirstName"
+            class="form-control"
+            placeholder="e.g. Vikram"
+            [class.is-invalid]="submitted && f['ownerFirstName'].errors"
+          />
+          <div *ngIf="submitted && f['ownerFirstName'].errors" class="form-error">First name is required</div>
+        </div>
+
+        <!-- Middle Name -->
+        <div class="form-group">
+          <label class="form-label">Middle Name</label>
+          <input
+            type="text"
+            formControlName="ownerMiddleName"
+            class="form-control"
+            placeholder="e.g. Singh"
+          />
+        </div>
+
+        <!-- Last Name -->
+        <div class="form-group">
+          <label class="form-label">Last Name</label>
+          <input
+            type="text"
+            formControlName="ownerLastName"
+            class="form-control"
+            placeholder="e.g. Rathore"
+          />
+        </div>
+
+        <!-- Empty slot for grid balance -->
+        <div class="form-group empty-slot"></div>
+
+        <!-- Password -->
+        <div class="form-group">
+          <label class="form-label">Account Password <span class="required">*</span></label>
+          <div class="password-wrap">
+            <input
+              [type]="showPassword ? 'text' : 'password'"
+              formControlName="password"
+              class="form-control password-input"
+              placeholder="Enter secure password"
+              [class.is-invalid]="submitted && (!isPasswordValid || f['password'].errors)"
+            />
+            <button
+              type="button"
+              class="btn-eye"
+              (click)="showPassword = !showPassword"
+              title="Toggle visibility"
+            >
+              {{ showPassword ? '👁️' : '👁️‍🗨️' }}
+            </button>
+          </div>
+
+          <!-- Password Security Checklist -->
+          <div class="password-criteria-box">
+            <div class="criteria-item" [class.met]="hasMinMaxLen">
+              <span class="criteria-icon">{{ hasMinMaxLen ? '✓' : '•' }}</span>
+              <span>6 to 16 characters</span>
+            </div>
+            <div class="criteria-item" [class.met]="hasUpperLower">
+              <span class="criteria-icon">{{ hasUpperLower ? '✓' : '•' }}</span>
+              <span>Includes upper and lower case letters</span>
+            </div>
+            <div class="criteria-item" [class.met]="hasNumber">
+              <span class="criteria-icon">{{ hasNumber ? '✓' : '•' }}</span>
+              <span>At least one number</span>
+            </div>
+            <div class="criteria-item" [class.met]="hasSpecialChar">
+              <span class="criteria-icon">{{ hasSpecialChar ? '✓' : '•' }}</span>
+              <span>At least one special character (&#64;, $, !, %, etc.)</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Confirm Password -->
+        <div class="form-group">
+          <label class="form-label">Confirm Password <span class="required">*</span></label>
+          <div class="password-wrap">
+            <input
+              [type]="showConfirmPassword ? 'text' : 'password'"
+              formControlName="confirmPassword"
+              class="form-control password-input"
+              placeholder="Re-enter password"
+              [class.is-invalid]="submitted && (!passwordsMatch || f['confirmPassword'].errors)"
+            />
+            <button
+              type="button"
+              class="btn-eye"
+              (click)="showConfirmPassword = !showConfirmPassword"
+              title="Toggle visibility"
+            >
+              {{ showConfirmPassword ? '👁️' : '👁️‍🗨️' }}
+            </button>
+          </div>
+          <div *ngIf="submitted && !passwordsMatch" class="form-error">Passwords do not match</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Section 3: Legal & Verification Documents -->
+    <div class="card section-card">
+      <div class="section-title">
+        <span class="step-num">3</span>
+        <div>
+          <h3>Legal & Verification Documents</h3>
+          <p class="section-sub">Upload regulatory certificates and brand logos for official billing and tax compliance</p>
+        </div>
+      </div>
+
+      <div class="uploads-grid">
+        <!-- TRN Certificate -->
+        <div class="upload-card" (click)="trnInput.click()" [class.has-file]="!!trnCertFileName">
+          <input #trnInput type="file" hidden (change)="onFileSelect($event, 'trn')" accept="image/*,.pdf" />
+          <div class="upload-icon">
+            <span *ngIf="!uploadingTrn && !trnCertFileName">📄</span>
+            <span *ngIf="!uploadingTrn && trnCertFileName">✅</span>
+            <span *ngIf="uploadingTrn" class="spinner"></span>
+          </div>
+          <div class="upload-meta">
+            <span class="upload-title">{{ trnCertFileName ? trnCertFileName : 'Upload TRN Certificate' }}</span>
+            <span class="upload-hint">{{ trnCertFileName ? 'File uploaded successfully' : 'PDF or Image up to 10MB' }}</span>
+          </div>
+        </div>
+
+        <!-- Logo -->
+        <div class="upload-card" (click)="logoInput.click()" [class.has-file]="!!logoFileName">
+          <input #logoInput type="file" hidden (change)="onFileSelect($event, 'logo')" accept="image/*" />
+          <div class="upload-icon">
+            <span *ngIf="!uploadingLogo && !logoFileName">🖼️</span>
+            <span *ngIf="!uploadingLogo && logoFileName">✅</span>
+            <span *ngIf="uploadingLogo" class="spinner"></span>
+          </div>
+          <div class="upload-meta">
+            <span class="upload-title">{{ logoFileName ? logoFileName : 'Upload Logo' }}</span>
+            <span class="upload-hint">{{ logoFileName ? 'Store logo uploaded' : 'PNG, JPG, SVG' }}</span>
+          </div>
+        </div>
+
+        <!-- Trade License -->
+        <div class="upload-card" (click)="licenseInput.click()" [class.has-file]="!!tradeLicenseFileName">
+          <input #licenseInput type="file" hidden (change)="onFileSelect($event, 'license')" accept="image/*,.pdf" />
+          <div class="upload-icon">
+            <span *ngIf="!uploadingLicense && !tradeLicenseFileName">📜</span>
+            <span *ngIf="!uploadingLicense && tradeLicenseFileName">✅</span>
+            <span *ngIf="uploadingLicense" class="spinner"></span>
+          </div>
+          <div class="upload-meta">
+            <span class="upload-title">{{ tradeLicenseFileName ? tradeLicenseFileName : 'Upload Trade License' }}</span>
+            <span class="upload-hint">{{ tradeLicenseFileName ? 'Trade license uploaded' : 'PDF or Image' }}</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Section 4: Enabled Store Modules -->
+    <div class="card section-card">
+      <div class="section-title">
+        <span class="step-num">4</span>
         <div>
           <h3>Enabled Store Modules</h3>
           <p class="section-sub">Select platform modules accessible to this grocery store tenant</p>
@@ -103,42 +408,21 @@
       </div>
     </div>
 
-    <!-- Section 3: Store Owner Provisioning -->
-    <div class="card section-card" formGroupName="owner">
-      <div class="section-title">
-        <span class="step-num">3</span>
-        <div>
-          <h3>Store Owner Credentials</h3>
-          <p class="section-sub">Primary administrator account assigned to manage this store</p>
-        </div>
-      </div>
-
-      <div class="form-grid">
-        <div class="form-group">
-          <label class="form-label">Owner Full Name *</label>
-          <input type="text" formControlName="name" class="form-control" placeholder="e.g. Ritik Sharma" />
-          <div *ngIf="submitted && ownerControls['name'].errors" class="form-error">Owner name is required</div>
-        </div>
-
-        <div class="form-group">
-          <label class="form-label">Owner Email *</label>
-          <input type="email" formControlName="email" class="form-control" placeholder="e.g. ritik@sharmagrocery.com" />
-          <div *ngIf="submitted && ownerControls['email'].errors" class="form-error">Valid email is required</div>
-        </div>
-
-        <div class="form-group">
-          <label class="form-label">Owner Phone</label>
-          <input type="text" formControlName="phone" class="form-control" placeholder="+91 9988776655" />
-        </div>
-
-        <div class="form-group">
-          <label class="form-label">Owner Password *</label>
-          <input type="password" formControlName="password" class="form-control" placeholder="Enter secure password" />
-          <div *ngIf="submitted && ownerControls['password'].errors" class="form-error">Password is required</div>
-        </div>
-      </div>
+    <!-- Terms & Conditions Card -->
+    <div class="card terms-card">
+      <label class="terms-label">
+        <input
+          type="checkbox"
+          formControlName="agreedTerms"
+          class="checkbox-input"
+          [class.is-invalid]="submitted && f['agreedTerms'].errors"
+        />
+        <span>You Agree to <a href="javascript:void(0)" class="terms-link">Terms And Conditions</a></span>
+      </label>
+      <div *ngIf="submitted && f['agreedTerms'].errors" class="form-error">You must accept the terms before proceeding</div>
     </div>
 
+    <!-- Form Actions -->
     <div class="form-actions">
       <a routerLink="/admin/stores" class="btn btn-secondary">Cancel</a>
       <button type="submit" class="btn btn-primary btn-lg" [disabled]="loading">

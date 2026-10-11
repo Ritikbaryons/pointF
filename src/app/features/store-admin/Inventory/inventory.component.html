@@ -1,0 +1,30 @@
+<div class="inventory-container">
+  <!-- Inventory Header -->
+  <div class="inventory-header">
+    <h2 class="inventory-title">Inventory</h2>
+  </div>
+
+  <!-- Inventory Sub-Tabs Navigation (Like reference design) -->
+  <nav class="inventory-tabs">
+    <a routerLink="supplier" routerLinkActive="active" class="inv-tab-btn">
+      Supplier
+    </a>
+    <a routerLink="product" routerLinkActive="active" class="inv-tab-btn">
+      Product
+    </a>
+    <a routerLink="stock" routerLinkActive="active" class="inv-tab-btn">
+      Stock
+    </a>
+    <a routerLink="category" routerLinkActive="active" class="inv-tab-btn">
+      Category
+    </a>
+    <a routerLink="supplier-order" routerLinkActive="active" class="inv-tab-btn">
+      Supplier Order
+    </a>
+  </nav>
+
+  <!-- Nested Route View -->
+  <div class="inventory-body">
+    <router-outlet></router-outlet>
+  </div>
+</div>

@@ -30,8 +30,15 @@
           <tr *ngFor="let store of stores">
             <td>
               <div class="store-cell">
-                <span class="store-name">{{ store.name }}</span>
-                <span class="store-id">ID #{{ store.id }}</span>
+                <div class="store-info-flex">
+                  <div class="store-logo-tiny" *ngIf="store.logo_url">
+                    <img [src]="store.logo_url" alt="{{ store.name }}" />
+                  </div>
+                  <div>
+                    <span class="store-name">{{ store.name }}</span>
+                    <span class="store-id">ID #{{ store.id }}</span>
+                  </div>
+                </div>
               </div>
             </td>
             <td>
@@ -56,8 +63,8 @@
             </td>
             <td style="text-align: right;">
               <div class="action-buttons">
-                <button (click)="openModulesModal(store)" class="btn btn-secondary btn-sm" title="Configure Modules">
-                  ⚙️ Modules
+                <button (click)="openEditModal(store)" class="btn btn-sm btn-edit" title="Edit Store Details">
+                  <span>✏️</span> Edit
                 </button>
                 <button (click)="toggleStoreStatus(store)"
                         class="btn btn-sm"
@@ -81,39 +88,125 @@
     </div>
   </div>
 
-  <!-- Store Modules Configuration Modal -->
-  <div class="modal-backdrop" *ngIf="selectedStoreForModules" (click)="closeModulesModal()">
-    <div class="modal-container" (click)="$event.stopPropagation()">
+  <!-- Edit Store Modal -->
+  <div class="modal-backdrop" *ngIf="showEditModal" (click)="closeEditModal()">
+    <div class="modal-card modal-lg" (click)="$event.stopPropagation()">
       <div class="modal-header">
-        <h3>Configure Modules: {{ selectedStoreForModules.name }}</h3>
-        <button class="btn-close" (click)="closeModulesModal()">✕</button>
-      </div>
-
-      <div class="modal-body">
-        <p class="modal-desc">
-          Toggle modules enabled for this store tenant. Disabling a module prevents users belonging to this store from accessing it even if their role permits it.
-        </p>
-
-        <div class="modules-grid">
-          <div *ngFor="let mod of currentStoreModules" class="module-item">
-            <label class="module-checkbox-label">
-              <input type="checkbox" [(ngModel)]="mod.is_enabled" />
-              <div class="module-info">
-                <span class="mod-name">{{ mod.module_name }}</span>
-                <span class="mod-code">{{ mod.module_code }}</span>
-                <span class="mod-desc">{{ mod.description }}</span>
-              </div>
-            </label>
+        <div class="modal-title-group">
+          <span class="modal-icon">🏬</span>
+          <div>
+            <h3>Edit Store: {{ editingStore?.name }}</h3>
+            <p class="modal-sub">Update store business profile, location, contact, and registration settings</p>
           </div>
         </div>
+        <button class="btn-close" (click)="closeEditModal()">✕</button>
       </div>
 
-      <div class="modal-footer">
-        <button (click)="closeModulesModal()" class="btn btn-secondary">Cancel</button>
-        <button (click)="saveModules()" class="btn btn-primary" [disabled]="savingModules">
-          {{ savingModules ? 'Saving...' : 'Save Module Access' }}
-        </button>
+      <div *ngIf="editErrorMessage" class="alert-box alert-danger">
+        <span>⚠️</span>
+        <span>{{ editErrorMessage }}</span>
       </div>
+
+      <form [formGroup]="editStoreForm" (ngSubmit)="onSubmitEditStore()" class="modal-scroll-form">
+        <div class="modal-body-content">
+          <!-- Row 1: Name & Registration No -->
+          <div class="form-grid-2">
+            <div class="form-group">
+              <label class="form-label">Store Name <span class="required-star">*</span></label>
+              <input type="text" formControlName="name" class="form-control" placeholder="Store Name" />
+              <div *ngIf="editSubmitted && ef['name'].errors" class="form-error">Store Name is required</div>
+            </div>
+
+            <div class="form-group">
+              <label class="form-label">Registration No / Store Code <span class="required-star">*</span></label>
+              <input type="text" formControlName="registrationNo" class="form-control" placeholder="Registration No" />
+              <div *ngIf="editSubmitted && ef['registrationNo'].errors" class="form-error">Registration No is required</div>
+            </div>
+          </div>
+
+          <!-- Row 2: Email & Phone -->
+          <div class="form-grid-2">
+            <div class="form-group">
+              <label class="form-label">Store Email <span class="required-star">*</span></label>
+              <input type="email" formControlName="email" class="form-control" placeholder="contact@store.com" />
+              <div *ngIf="editSubmitted && ef['email'].errors" class="form-error">Valid email is required</div>
+            </div>
+
+            <div class="form-group">
+              <label class="form-label">Phone Number</label>
+              <input type="text" formControlName="phone" class="form-control" placeholder="+91 9876543210" />
+            </div>
+          </div>
+
+          <!-- Row 3: Address -->
+          <div class="form-group">
+            <label class="form-label">Street Address <span class="required-star">*</span></label>
+            <textarea formControlName="address" class="form-control textarea-sm" rows="2" placeholder="Store physical address"></textarea>
+            <div *ngIf="editSubmitted && ef['address'].errors" class="form-error">Address is required</div>
+          </div>
+
+          <!-- Row 4: Country & City -->
+          <div class="form-grid-2">
+            <div class="form-group">
+              <label class="form-label">Country <span class="required-star">*</span></label>
+              <select formControlName="countryId" class="form-control" (change)="onCountryChange()">
+                <option value="">Select Country...</option>
+                <option *ngFor="let c of countries" [value]="c.id">{{ c.name }}</option>
+              </select>
+              <div *ngIf="editSubmitted && ef['countryId'].errors" class="form-error">Country is required</div>
+            </div>
+
+            <div class="form-group">
+              <label class="form-label">City <span class="required-star">*</span></label>
+              <select formControlName="cityId" class="form-control" [disabled]="loadingCities">
+                <option value="">{{ loadingCities ? 'Loading cities...' : 'Select City...' }}</option>
+                <option *ngFor="let city of cities" [value]="city.id">{{ city.name }}</option>
+              </select>
+              <div *ngIf="editSubmitted && ef['cityId'].errors" class="form-error">City is required</div>
+            </div>
+          </div>
+
+          <!-- Row 5: Reset Time, TRN, PO Box -->
+          <div class="form-grid-3">
+            <div class="form-group">
+              <label class="form-label">POS Reset Time <span class="required-star">*</span></label>
+              <input type="time" formControlName="resetTime" class="form-control" />
+            </div>
+
+            <div class="form-group">
+              <label class="form-label">TRN Number</label>
+              <input type="text" formControlName="trnNumber" class="form-control" placeholder="Tax Registration No" />
+            </div>
+
+            <div class="form-group">
+              <label class="form-label">PO Box</label>
+              <input type="text" formControlName="poBox" class="form-control" placeholder="P.O. Box No" />
+            </div>
+          </div>
+
+          <!-- Row 6: Logo Upload -->
+          <div class="form-group">
+            <label class="form-label">Store Logo</label>
+            <div class="logo-upload-wrap">
+              <div class="logo-preview-box" *ngIf="logoPreview">
+                <img [src]="logoPreview" alt="Store Logo Preview" class="logo-thumb" />
+              </div>
+              <input #logoFileInput type="file" accept="image/*" style="display: none" (change)="onLogoSelect($event)" />
+              <button type="button" class="btn btn-secondary btn-sm" (click)="logoFileInput.click()" [disabled]="uploadingLogo">
+                <span>{{ uploadingLogo ? 'Uploading...' : 'Upload / Change Logo' }}</span>
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" (click)="closeEditModal()">Cancel</button>
+          <button type="submit" class="btn btn-primary" [disabled]="savingStore">
+            <span *ngIf="savingStore" class="spinner"></span>
+            <span>{{ savingStore ? 'Saving...' : 'Save Changes' }}</span>
+          </button>
+        </div>
+      </form>
     </div>
   </div>
 </div>

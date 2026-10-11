@@ -1,7 +1,7 @@
 import { Component, OnInit, effect } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormBuilder, FormGroup, Validators, ReactiveFormsModule } from '@angular/forms';
-import { RoleService } from '../../../core/services/role.service';
+import { ApiService } from '../../../core/services/api.services';
 import { PermissionService } from '../../../core/services/permission.service';
 import { StoreContextService } from '../../../core/services/store-context.service';
 import { Role, Permission } from '../../../core/models/auth.model';
@@ -34,7 +34,7 @@ export class RoleManagementComponent implements OnInit {
 
   constructor(
     private fb: FormBuilder,
-    private roleService: RoleService,
+    private apiService: ApiService,
     private permissionService: PermissionService,
     public storeContext: StoreContextService
   ) {
@@ -43,10 +43,16 @@ export class RoleManagementComponent implements OnInit {
       description: [''],
     });
 
-    // Auto-reload when store context changes
+    // Auto-reload when store context or branch context changes
     effect(() => {
       const storeId = this.storeContext.selectedStoreId();
       this.loadRoles();
+    });
+
+    effect(() => {
+      const branchId = this.storeContext.selectedBranchId();
+      const mods = this.storeContext.activeBranchModules();
+      this.loadPermissions();
     });
   }
 
@@ -56,7 +62,7 @@ export class RoleManagementComponent implements OnInit {
   }
 
   loadRoles(): void {
-    this.roleService.getAllRoles().subscribe({
+    this.apiService.getAllRoles().subscribe({
       next: (res) => {
         if (res.success) {
           this.roles = res.data;
@@ -66,7 +72,8 @@ export class RoleManagementComponent implements OnInit {
   }
 
   loadPermissions(): void {
-    this.permissionService.getAllPermissions().subscribe({
+    const branchId = this.storeContext.selectedBranchId();
+    this.permissionService.getAllPermissions(branchId).subscribe({
       next: (res) => {
         if (res.success) {
           this.allPermissions = res.data;
@@ -79,10 +86,17 @@ export class RoleManagementComponent implements OnInit {
   groupPermissions(): void {
     const groupMap = new Map<string, Permission[]>();
     for (const p of this.allPermissions) {
-      if (!groupMap.has(p.module)) {
-        groupMap.set(p.module, []);
+      const moduleCode = (p as any).module_code || p.module;
+      // Filter out permissions if the module is disabled in the active branch
+      if (this.storeContext.selectedBranchId() && !this.storeContext.hasBranchModule(moduleCode)) {
+        continue;
       }
-      groupMap.get(p.module)!.push(p);
+
+      const groupKey = (p as any).module_name || p.module;
+      if (!groupMap.has(groupKey)) {
+        groupMap.set(groupKey, []);
+      }
+      groupMap.get(groupKey)!.push(p);
     }
 
     this.permissionGroups = Array.from(groupMap.entries()).map(([moduleName, permissions]) => ({
@@ -114,7 +128,7 @@ export class RoleManagementComponent implements OnInit {
     this.submitted = false;
     this.errorMessage = '';
 
-    this.roleService.getRolePermissions(role.id).subscribe({
+    this.apiService.getRolePermissions(role.id).subscribe({
       next: (res) => {
         if (res.success) {
           res.data.forEach((p) => this.selectedPermIds.add(p.id));
@@ -161,8 +175,8 @@ export class RoleManagementComponent implements OnInit {
     };
 
     const action$ = this.editingRoleId
-      ? this.roleService.updateRole(this.editingRoleId, payload)
-      : this.roleService.createRole(payload);
+      ? this.apiService.updateRole(this.editingRoleId, payload)
+      : this.apiService.createRole(payload);
 
     action$.subscribe({
       next: () => {
@@ -179,7 +193,7 @@ export class RoleManagementComponent implements OnInit {
 
   deleteRole(role: Role): void {
     if (!confirm(`Are you sure you want to delete role '${role.name}'?`)) return;
-    this.roleService.deleteRole(role.id).subscribe({
+    this.apiService.deleteRole(role.id).subscribe({
       next: () => {
         this.loadRoles();
       },

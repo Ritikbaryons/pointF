@@ -41,6 +41,9 @@ export interface Branch {
   state?: string | null;
   country?: string | null;
   pincode?: string | null;
+  opening_time?: string | null;
+  closing_time?: string | null;
+  logo_url?: string | null;
   status: 'ACTIVE' | 'INACTIVE';
   store_name?: string;
   store_code?: string;

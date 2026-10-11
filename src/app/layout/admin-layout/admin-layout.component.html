@@ -27,78 +27,105 @@
           <span class="nav-icon">📍</span>
           <span class="nav-label">All Branches</span>
         </a>
+      </ng-container>
 
-        <!-- Store View Section when Super Admin selects a Store -->
-        <ng-container *ngIf="storeContext.selectedStore() as selStore">
-          <div class="nav-section-title store-view-section-title">
-            <span>STORE: {{ selStore.code }}</span>
+      <!-- Store / Branch Operations Section (All Tabs Accessible) -->
+      <div class="nav-section-title">STORE & OPERATIONS</div>
+      <a routerLink="/store/dashboard" routerLinkActive="active" class="nav-item">
+        <span class="nav-icon">⚡</span>
+        <span class="nav-label">Dashboard</span>
+      </a>
+
+      <!-- Cash Counter -->
+      <a routerLink="/store/pos" routerLinkActive="active" class="nav-item">
+        <span class="nav-icon">💳</span>
+        <span class="nav-label">Cash Counter</span>
+      </a>
+
+
+      <!-- Inventory Dropdown Group -->
+      <div class="nav-group">
+        <button type="button" class="nav-item nav-item-parent" (click)="toggleInventory()" [class.active]="isInventoryActive()">
+          <div class="nav-item-left">
+            <span class="nav-icon">📊</span>
+            <span class="nav-label">Inventory</span>
           </div>
-          <a routerLink="/store/dashboard" routerLinkActive="active" class="nav-item store-inspect-item">
-            <span class="nav-icon">⚡</span>
-            <span class="nav-label">Dashboard</span>
+          <span class="nav-arrow" [class.open]="inventoryOpen">▾</span>
+        </button>
+
+        <div class="nav-submenu" *ngIf="inventoryOpen">
+          <a routerLink="/store/inventory/supplier" routerLinkActive="active" class="nav-sub-item">
+            <span class="sub-dot"></span>
+            <span class="nav-label">Supplier</span>
           </a>
-          <a routerLink="/store/branches" routerLinkActive="active" class="nav-item store-inspect-item">
-            <span class="nav-icon">🏢</span>
-            <span class="nav-label">Branches</span>
+          <a routerLink="/store/inventory/product" routerLinkActive="active" class="nav-sub-item">
+            <span class="sub-dot"></span>
+            <span class="nav-label">Product</span>
           </a>
-          <a routerLink="/store/users" routerLinkActive="active" class="nav-item store-inspect-item">
-            <span class="nav-icon">👥</span>
-            <span class="nav-label">Users & Staff</span>
+          <a routerLink="/store/inventory/stock" routerLinkActive="active" class="nav-sub-item">
+            <span class="sub-dot"></span>
+            <span class="nav-label">Stock</span>
           </a>
-          <a routerLink="/store/roles" routerLinkActive="active" class="nav-item store-inspect-item">
-            <span class="nav-icon">🛡️</span>
-            <span class="nav-label">Roles & Perms</span>
+          <a routerLink="/store/inventory/category" routerLinkActive="active" class="nav-sub-item">
+            <span class="sub-dot"></span>
+            <span class="nav-label">Category</span>
           </a>
-        </ng-container>
-      </ng-container>
-
-      <!-- Store Admin Section (For Store Owner / Store Users) -->
-      <ng-container *ngIf="!authService.isSuperAdmin()">
-        <div class="nav-section-title">STORE SETUP</div>
-        <a routerLink="/store/dashboard" routerLinkActive="active" class="nav-item">
-          <span class="nav-icon">⚡</span>
-          <span class="nav-label">Store Dashboard</span>
-        </a>
-
-        <!-- Branch Management (Requires BRANCH_MANAGEMENT module & BRANCH_VIEW perm) -->
-        <a *ngIf="permissionService.hasPermission('BRANCH_VIEW')"
-           routerLink="/store/branches" routerLinkActive="active" class="nav-item">
-          <span class="nav-icon">🏢</span>
-          <span class="nav-label">Branches</span>
-        </a>
-
-        <!-- User Management (Requires USER_MANAGEMENT module & USER_VIEW perm) -->
-        <a *ngIf="permissionService.hasPermission('USER_VIEW')"
-           routerLink="/store/users" routerLinkActive="active" class="nav-item">
-          <span class="nav-icon">👥</span>
-          <span class="nav-label">Users & Staff</span>
-        </a>
-
-        <!-- Role Management (Requires ROLE_MANAGEMENT module & ROLE_VIEW perm) -->
-        <a *ngIf="permissionService.hasPermission('ROLE_VIEW')"
-           routerLink="/store/roles" routerLinkActive="active" class="nav-item">
-          <span class="nav-icon">🛡️</span>
-          <span class="nav-label">Roles & Perms</span>
-        </a>
-
-        <!-- Master Setup (Disabled in this phase) -->
-        <div class="nav-section-title">FUTURE MODULES</div>
-        <div class="nav-item disabled-nav" title="Module under construction">
-          <span class="nav-icon">📦</span>
-          <span class="nav-label">Products</span>
-          <span class="badge-lock">Phase 2</span>
+          <a routerLink="/store/inventory/supplier-order" routerLinkActive="active" class="nav-sub-item">
+            <span class="sub-dot"></span>
+            <span class="nav-label">Supplier Order</span>
+          </a>
         </div>
-        <div class="nav-item disabled-nav" title="Module under construction">
-          <span class="nav-icon">💳</span>
-          <span class="nav-label">POS Counter</span>
-          <span class="badge-lock">Phase 2</span>
+      </div>
+
+      <!-- Customers -->
+      <a routerLink="/store/customers" routerLinkActive="active" class="nav-item">
+        <span class="nav-icon">👥</span>
+        <span class="nav-label">Customers</span>
+      </a>
+
+      <!-- Branch Management -->
+      <a routerLink="/store/branches" routerLinkActive="active" class="nav-item">
+        <span class="nav-icon">🏢</span>
+        <span class="nav-label">Branches</span>
+      </a>
+
+      <!-- Settings Dropdown Group -->
+      <div class="nav-group">
+        <button type="button" class="nav-item nav-item-parent" (click)="toggleSettings()" [class.active]="isSettingsActive()">
+          <div class="nav-item-left">
+            <span class="nav-icon">⚙️</span>
+            <span class="nav-label">Settings</span>
+          </div>
+          <span class="nav-arrow" [class.open]="settingsOpen">▾</span>
+        </button>
+
+        <div class="nav-submenu" *ngIf="settingsOpen">
+          <a routerLink="/store/settings/print-design" routerLinkActive="active" class="nav-sub-item">
+            <span class="sub-dot"></span>
+            <span class="nav-label">Print Design</span>
+          </a>
+          <a routerLink="/store/settings/tax" routerLinkActive="active" class="nav-sub-item">
+            <span class="sub-dot"></span>
+            <span class="nav-label">Tax</span>
+          </a>
+          <a routerLink="/store/settings/store-management" routerLinkActive="active" class="nav-sub-item">
+            <span class="sub-dot"></span>
+            <span class="nav-label">Store Management</span>
+          </a>
+          <a routerLink="/store/settings/roles-permissions" routerLinkActive="active" class="nav-sub-item">
+            <span class="sub-dot"></span>
+            <span class="nav-label">Roles & Permissions</span>
+          </a>
+          <a routerLink="/store/settings/user-registration" routerLinkActive="active" class="nav-sub-item">
+            <span class="sub-dot"></span>
+            <span class="nav-label">User Registration</span>
+          </a>
+          <a routerLink="/store/settings/general" routerLinkActive="active" class="nav-sub-item">
+            <span class="sub-dot"></span>
+            <span class="nav-label">General Settings</span>
+          </a>
         </div>
-        <div class="nav-item disabled-nav" title="Module under construction">
-          <span class="nav-icon">📈</span>
-          <span class="nav-label">Analytics</span>
-          <span class="badge-lock">Phase 2</span>
-        </div>
-      </ng-container>
+      </div>
     </nav>
 
     <div class="sidebar-footer">
@@ -117,10 +144,31 @@
     <!-- Header -->
     <header class="topbar">
       <div class="topbar-left">
+        <!-- Super Admin Badge -->
         <span class="platform-badge" *ngIf="authService.isSuperAdmin()">SUPER ADMIN CONSOLE</span>
-        <span class="store-badge" *ngIf="!authService.isSuperAdmin()">
-          {{ authService.currentUser()?.storeName || 'Store Portal' }} ({{ authService.currentUser()?.storeCode || 'TENANT' }})
-        </span>
+
+        <!-- Company Admin Header: Store Name & Current Branch Selector Dropdown -->
+        <div class="company-admin-header" *ngIf="!authService.isSuperAdmin()">
+          <div class="store-brand-pill">
+            <span class="store-brand-icon">🏬</span>
+            <span class="store-brand-name">{{ authService.currentUser()?.storeName || 'Store Portal' }}</span>
+          </div>
+
+          <div class="branch-pill-selector">
+            <span class="branch-icon">📍</span>
+            <select
+              class="header-branch-select"
+              [value]="storeContext.selectedBranchId() || ''"
+              (change)="onBranchChange($event)"
+              title="Switch Active Branch"
+            >
+              <option *ngFor="let b of storeContext.branches()" [value]="b.id">
+                {{ b.name }}
+              </option>
+            </select>
+            <span class="branch-active-tag">Active Branch</span>
+          </div>
+        </div>
 
         <!-- Super Admin Context Switcher (Store & Branch Dropdowns) -->
         <div class="sa-context-bar" *ngIf="authService.isSuperAdmin()">

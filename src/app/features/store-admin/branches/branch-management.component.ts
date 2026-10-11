@@ -1,7 +1,7 @@
 import { Component, OnInit, effect } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormBuilder, FormGroup, Validators, ReactiveFormsModule } from '@angular/forms';
-import { BranchService } from '../../../core/services/branch.service';
+import { ApiService } from '../../../core/services/api.services';
 import { PermissionService } from '../../../core/services/permission.service';
 import { StoreContextService } from '../../../core/services/store-context.service';
 import { Branch } from '../../../core/models/auth.model';
@@ -33,7 +33,7 @@ export class BranchManagementComponent implements OnInit {
 
   constructor(
     private fb: FormBuilder,
-    private branchService: BranchService,
+    private apiService: ApiService,
     public permissionService: PermissionService,
     public storeContext: StoreContextService
   ) {
@@ -45,6 +45,9 @@ export class BranchManagementComponent implements OnInit {
       state: [''],
       pincode: [''],
       country: ['India'],
+      openingTime: ['08:00', Validators.required],
+      closingTime: ['22:00', Validators.required],
+      logoUrl: [''],
     });
 
     // Auto-reload when Super Admin selects different store
@@ -60,7 +63,7 @@ export class BranchManagementComponent implements OnInit {
   }
 
   loadBranches(): void {
-    this.branchService.getAllBranches().subscribe({
+    this.apiService.getAllBranches().subscribe({
       next: (res) => {
         if (res.success) {
           this.branches = res.data;
@@ -83,8 +86,21 @@ export class BranchManagementComponent implements OnInit {
     return this.branchForm.controls;
   }
 
+  isEditMode = false;
+  editingBranchId: number | null = null;
+  branchLogoFileName = '';
+  uploadingBranchLogo = false;
+
   openCreateModal(): void {
-    this.branchForm.reset({ country: 'India' });
+    this.isEditMode = false;
+    this.editingBranchId = null;
+    this.branchForm.reset({
+      country: 'India',
+      openingTime: '08:00',
+      closingTime: '22:00',
+      logoUrl: '',
+    });
+    this.branchLogoFileName = '';
     this.submitted = false;
     this.errorMessage = '';
     // By default, pre-select all catalog modules for the new branch
@@ -92,8 +108,59 @@ export class BranchManagementComponent implements OnInit {
     this.showModal = true;
   }
 
+  openEditModal(branch: any): void {
+    this.isEditMode = true;
+    this.editingBranchId = branch.id;
+    this.submitted = false;
+    this.errorMessage = '';
+
+    this.branchForm.patchValue({
+      name: branch.name || '',
+      code: branch.code || '',
+      address: branch.address || '',
+      city: branch.city || '',
+      state: branch.state || '',
+      country: branch.country || 'India',
+      pincode: branch.pincode || '',
+      openingTime: branch.opening_time || '08:00',
+      closingTime: branch.closing_time || '22:00',
+      logoUrl: branch.logo_url || '',
+    });
+
+    this.branchLogoFileName = branch.logo_url ? 'Current Branch Logo' : '';
+    this.showModal = true;
+  }
+
+  onBranchLogoSelect(event: any): void {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = () => {
+      this.uploadingBranchLogo = true;
+      const base64Data = reader.result as string;
+      this.apiService.uploadFile(base64Data, file.name, file.type).subscribe({
+        next: (res) => {
+          this.uploadingBranchLogo = false;
+          if (res.success && res.data) {
+            this.branchLogoFileName = file.name;
+            this.branchForm.patchValue({ logoUrl: res.data.url });
+          }
+        },
+        error: (err) => {
+          this.uploadingBranchLogo = false;
+          console.error('Logo upload error:', err);
+          alert('Failed to upload branch logo.');
+        },
+      });
+    };
+    reader.readAsDataURL(file);
+  }
+
   closeModal(): void {
     this.showModal = false;
+    this.isEditMode = false;
+    this.editingBranchId = null;
   }
 
   toggleCreateModule(moduleId: number): void {
@@ -117,25 +184,54 @@ export class BranchManagementComponent implements OnInit {
     }
 
     this.loading = true;
-    const payload: any = {
-      ...this.branchForm.value,
-      moduleIds: Array.from(this.selectedModuleIds),
-    };
-    if (this.storeContext.selectedStoreId()) {
-      payload.storeId = this.storeContext.selectedStoreId();
-    }
+    const formVal = this.branchForm.value;
 
-    this.branchService.createBranch(payload).subscribe({
-      next: () => {
-        this.loading = false;
-        this.closeModal();
-        this.loadBranches();
-      },
-      error: (err) => {
-        this.loading = false;
-        this.errorMessage = err.error?.message || 'Failed to create branch';
-      },
-    });
+    if (this.isEditMode && this.editingBranchId) {
+      const editPayload = {
+        name: formVal.name,
+        code: formVal.code,
+        address: formVal.address,
+        city: formVal.city,
+        state: formVal.state,
+        country: formVal.country,
+        pincode: formVal.pincode,
+        openingTime: formVal.openingTime,
+        closingTime: formVal.closingTime,
+        logoUrl: formVal.logoUrl,
+      };
+
+      this.apiService.updateBranch(this.editingBranchId, editPayload).subscribe({
+        next: () => {
+          this.loading = false;
+          this.closeModal();
+          this.loadBranches();
+        },
+        error: (err) => {
+          this.loading = false;
+          this.errorMessage = err.error?.message || 'Failed to update branch';
+        },
+      });
+    } else {
+      const createPayload: any = {
+        ...formVal,
+        moduleIds: Array.from(this.selectedModuleIds),
+      };
+      if (this.storeContext.selectedStoreId()) {
+        createPayload.storeId = this.storeContext.selectedStoreId();
+      }
+
+      this.apiService.createBranch(createPayload).subscribe({
+        next: () => {
+          this.loading = false;
+          this.closeModal();
+          this.loadBranches();
+        },
+        error: (err) => {
+          this.loading = false;
+          this.errorMessage = err.error?.message || 'Failed to create branch';
+        },
+      });
+    }
   }
 
   openModuleModal(branch: any): void {
@@ -144,7 +240,7 @@ export class BranchManagementComponent implements OnInit {
     this.moduleSuccessMessage = '';
     this.showModuleModal = true;
 
-    this.branchService.getBranchModules(branch.id).subscribe({
+    this.apiService.getBranchModules(branch.id).subscribe({
       next: (res) => {
         this.loadingModules = false;
         this.branchModules = res.data || [];
@@ -174,7 +270,7 @@ export class BranchManagementComponent implements OnInit {
       isEnabled: m.is_enabled,
     }));
 
-    this.branchService.updateBranchModules(this.selectedBranchForModules.id, payload).subscribe({
+    this.apiService.updateBranchModules(this.selectedBranchForModules.id, payload).subscribe({
       next: () => {
         this.savingModules = false;
         this.moduleSuccessMessage = 'Branch modules updated successfully!';
@@ -192,8 +288,8 @@ export class BranchManagementComponent implements OnInit {
 
   toggleStatus(branch: Branch): void {
     const newStatus = branch.status === 'ACTIVE' ? 'INACTIVE' : 'ACTIVE';
-    this.branchService.updateBranchStatus(branch.id, newStatus).subscribe({
-      next: (res) => {
+    this.apiService.updateBranchStatus(branch.id, newStatus).subscribe({
+      next: (res: any) => {
         if (res.success) {
           branch.status = newStatus;
         }
